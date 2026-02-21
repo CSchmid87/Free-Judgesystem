@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+
+interface Athlete {
+  bib: number;
+  name: string;
+}
 
 interface Category {
   id: string;
   name: string;
   weight: number;
+  athletes: Athlete[];
 }
 
 export default function AdminPage() {
@@ -17,6 +23,14 @@ export default function AdminPage() {
   const [editWeight, setEditWeight] = useState<number>(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Athletes state
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [athletesLoading, setAthletesLoading] = useState(false);
+  const [newBib, setNewBib] = useState<number | ''>('');
+  const [newAthleteName, setNewAthleteName] = useState('');
+  const [athleteError, setAthleteError] = useState('');
 
   function getKey() {
     return new URLSearchParams(window.location.search).get('key') ?? '';
@@ -102,6 +116,86 @@ export default function AdminPage() {
     setEditingId(null);
   }
 
+  // --- Athletes ---
+
+  const loadAthletes = useCallback(async (categoryId: string) => {
+    setAthletesLoading(true);
+    setAthleteError('');
+    try {
+      const res = await fetch(
+        `/api/admin/categories/${encodeURIComponent(categoryId)}/athletes?key=${encodeURIComponent(getKey())}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAthletes(data.athletes);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setAthletesLoading(false);
+    }
+  }, []);
+
+  function toggleExpand(categoryId: string) {
+    if (expandedCat === categoryId) {
+      setExpandedCat(null);
+      setAthletes([]);
+    } else {
+      setExpandedCat(categoryId);
+      loadAthletes(categoryId);
+    }
+    setNewBib('');
+    setNewAthleteName('');
+    setAthleteError('');
+  }
+
+  async function handleAddAthlete(e: React.FormEvent) {
+    e.preventDefault();
+    if (!expandedCat) return;
+    setAthleteError('');
+    const key = getKey();
+
+    const res = await fetch(
+      `/api/admin/categories/${encodeURIComponent(expandedCat)}/athletes?key=${encodeURIComponent(key)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bib: Number(newBib), name: newAthleteName.trim() }),
+      }
+    );
+
+    if (!res.ok) {
+      const data = await res.json();
+      setAthleteError(data.error || 'Failed to add athlete');
+      return;
+    }
+
+    const data = await res.json();
+    setAthletes(data.athletes);
+    setNewBib('');
+    setNewAthleteName('');
+  }
+
+  async function handleDeleteAthlete(bib: number) {
+    if (!expandedCat) return;
+    setAthleteError('');
+    const key = getKey();
+
+    const res = await fetch(
+      `/api/admin/categories/${encodeURIComponent(expandedCat)}/athletes?key=${encodeURIComponent(key)}&bib=${bib}`,
+      { method: 'DELETE' }
+    );
+
+    if (!res.ok) {
+      const data = await res.json();
+      setAthleteError(data.error || 'Failed to delete athlete');
+      return;
+    }
+
+    const data = await res.json();
+    setAthletes(data.athletes);
+  }
+
   const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0);
 
   return (
@@ -134,7 +228,8 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {categories.map((cat) => (
-                <tr key={cat.id}>
+                <React.Fragment key={cat.id}>
+                <tr>
                   {editingId === cat.id ? (
                     <>
                       <td style={styles.td}>
@@ -155,7 +250,7 @@ export default function AdminPage() {
                         />
                       </td>
                       <td style={styles.td}>
-                        <button style={styles.btnSave} onClick={() => handleUpdate(cat.id)}>
+                        <button style={styles.btnSave} onClick={() => handleUpdate(cat.id)} disabled={!editName.trim()}>
                           Save
                         </button>
                         <button style={styles.btnCancel} onClick={() => setEditingId(null)}>
@@ -165,7 +260,19 @@ export default function AdminPage() {
                     </>
                   ) : (
                     <>
-                      <td style={styles.td}>{cat.name}</td>
+                      <td style={styles.td}>
+                        <button
+                          style={styles.btnExpand}
+                          onClick={() => toggleExpand(cat.id)}
+                          title={expandedCat === cat.id ? 'Collapse athletes' : 'Expand athletes'}
+                        >
+                          {expandedCat === cat.id ? '▾' : '▸'}
+                        </button>
+                        {cat.name}
+                        <span style={styles.athleteCount}>
+                          ({(cat.athletes ?? []).length})
+                        </span>
+                      </td>
                       <td style={styles.td}>{cat.weight}</td>
                       <td style={styles.td}>
                         <button
@@ -185,6 +292,75 @@ export default function AdminPage() {
                     </>
                   )}
                 </tr>
+                {expandedCat === cat.id && (
+                  <tr>
+                    <td colSpan={3} style={styles.athleteCell}>
+                      {athletesLoading ? (
+                        <p style={styles.muted}>Loading athletes…</p>
+                      ) : (
+                        <>
+                          {athletes.length === 0 ? (
+                            <p style={styles.muted}>No athletes yet.</p>
+                          ) : (
+                            <table style={styles.athleteTable}>
+                              <thead>
+                                <tr>
+                                  <th style={styles.athTh}>Bib</th>
+                                  <th style={styles.athTh}>Name</th>
+                                  <th style={{ ...styles.athTh, width: 60 }}></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {athletes.map((a) => (
+                                  <tr key={a.bib}>
+                                    <td style={styles.athTd}>{a.bib}</td>
+                                    <td style={styles.athTd}>{a.name}</td>
+                                    <td style={styles.athTd}>
+                                      <button
+                                        style={styles.btnDelete}
+                                        onClick={() => handleDeleteAthlete(a.bib)}
+                                      >
+                                        ✕
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                          {athleteError && <p style={styles.error}>{athleteError}</p>}
+                          <form onSubmit={handleAddAthlete} style={styles.addForm}>
+                            <input
+                              type="number"
+                              value={newBib}
+                              onChange={(e) => setNewBib(e.target.value ? Number(e.target.value) : '')}
+                              placeholder="Bib"
+                              min={1}
+                              required
+                              style={{ ...styles.input, width: 70 }}
+                            />
+                            <input
+                              type="text"
+                              value={newAthleteName}
+                              onChange={(e) => setNewAthleteName(e.target.value)}
+                              placeholder="Athlete name"
+                              required
+                              style={styles.input}
+                            />
+                            <button
+                              type="submit"
+                              style={styles.btnAdd}
+                              disabled={!newBib || !newAthleteName.trim()}
+                            >
+                              Add
+                            </button>
+                          </form>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -324,4 +500,39 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.8rem',
   },
   error: { color: '#e00', margin: '0.5rem 0' },
+  btnExpand: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    padding: '0 0.4rem 0 0',
+    color: '#555',
+  },
+  athleteCount: {
+    fontSize: '0.75rem',
+    color: '#888',
+    marginLeft: '0.3rem',
+  },
+  athleteCell: {
+    padding: '0.5rem 0.5rem 0.5rem 1.5rem',
+    background: '#fafafa',
+    borderBottom: '1px solid #eee',
+  },
+  athleteTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginBottom: '0.5rem',
+  },
+  athTh: {
+    textAlign: 'left',
+    borderBottom: '1px solid #dee2e6',
+    padding: '0.3rem 0.5rem',
+    fontSize: '0.8rem',
+    color: '#555',
+  },
+  athTd: {
+    padding: '0.3rem 0.5rem',
+    borderBottom: '1px solid #eee',
+    fontSize: '0.85rem',
+  },
 };

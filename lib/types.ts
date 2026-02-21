@@ -5,12 +5,33 @@ export const JUDGE_ROLES = ['J1', 'J2', 'J3'] as const;
 export type JudgeRole = (typeof JUDGE_ROLES)[number];
 
 /**
+ * An athlete registered in a category.
+ */
+export interface Athlete {
+  bib: number;  // unique within category
+  name: string;
+}
+
+/**
+ * Type guard for Athlete.
+ */
+export function isAthlete(value: unknown): value is Athlete {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.bib === 'number' && Number.isInteger(obj.bib) && obj.bib > 0 &&
+    typeof obj.name === 'string' && !!obj.name
+  );
+}
+
+/**
  * A scoring category within an event (e.g. "Technik", "Choreografie").
  */
 export interface Category {
   id: string;
   name: string;
   weight: number; // 0-100, weights across categories should sum to 100
+  athletes: Athlete[];
 }
 
 /**
@@ -19,11 +40,17 @@ export interface Category {
 export function isCategory(value: unknown): value is Category {
   if (!value || typeof value !== 'object') return false;
   const obj = value as Record<string, unknown>;
-  return (
-    typeof obj.id === 'string' && !!obj.id &&
-    typeof obj.name === 'string' && !!obj.name &&
-    typeof obj.weight === 'number' && obj.weight >= 0 && obj.weight <= 100
-  );
+  if (
+    typeof obj.id !== 'string' || !obj.id ||
+    typeof obj.name !== 'string' || !obj.name ||
+    typeof obj.weight !== 'number' || obj.weight < 0 || obj.weight > 100
+  ) return false;
+  // Athletes: default to empty array if missing (backward compat)
+  if ('athletes' in obj) {
+    if (!Array.isArray(obj.athletes)) return false;
+    if (!obj.athletes.every(isAthlete)) return false;
+  }
+  return true;
 }
 
 /**
