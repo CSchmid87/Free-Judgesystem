@@ -14,7 +14,7 @@ const EVENT_FILE = path.join(DATA_DIR, 'event.json');
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
     try {
-      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o755 });
+      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
     } catch (error) {
       throw new Error(
         `Failed to create data directory at ${DATA_DIR}: ${error instanceof Error ? error.message : String(error)}`

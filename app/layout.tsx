@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'US-A00 Minimal App',
-  description: 'Minimal Next.js app with persistence layer',
+  title: 'Free Judgesystem',
+  description: 'LAN-based judging system for events',
 };
 
 export default function RootLayout({
