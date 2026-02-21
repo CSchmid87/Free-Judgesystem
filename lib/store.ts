@@ -63,6 +63,20 @@ export function loadEvent(): EventData | null {
 }
 
 /**
+ * Partially update the event (merge with existing data).
+ * Useful for adding/removing categories without regenerating keys.
+ */
+export function updateEvent(patch: Partial<EventData>): EventData {
+  const existing = loadEvent();
+  if (!existing) {
+    throw new Error('No event exists to update');
+  }
+  const updated: EventData = { ...existing, ...patch };
+  saveEvent(updated);
+  return updated;
+}
+
+/**
  * Save event with atomic write (temp file → rename).
  * Ensures data is never corrupted if process crashes mid-write.
  * Throws if validation fails or I/O fails.

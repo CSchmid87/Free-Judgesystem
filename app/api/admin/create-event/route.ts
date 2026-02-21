@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         J2: generateKey(),
         J3: generateKey(),
       },
+      categories: [],
     };
 
     saveEvent(event);
