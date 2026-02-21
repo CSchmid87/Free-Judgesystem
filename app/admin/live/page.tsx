@@ -51,6 +51,7 @@ function LiveControlInner() {
   });
   const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
   const [isLocked, setIsLocked] = useState(false);
+  const [rerunning, setRerunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -132,8 +133,14 @@ function LiveControlInner() {
     updateLive({ lock: !isLocked } as unknown as Partial<LiveState>);
   };
 
-  const handleRerun = () => {
-    updateLive({ rerun: true } as unknown as Partial<LiveState>);
+  const handleRerun = async () => {
+    if (rerunning) return;
+    setRerunning(true);
+    try {
+      await updateLive({ rerun: true } as unknown as Partial<LiveState>);
+    } finally {
+      setRerunning(false);
+    }
   };
 
   if (loading) {
@@ -309,6 +316,7 @@ function LiveControlInner() {
           {currentAthlete && (
             <button
               onClick={handleRerun}
+              disabled={rerunning}
               style={{
                 width: '100%',
                 padding: '0.6rem 1rem',
@@ -318,11 +326,12 @@ function LiveControlInner() {
                 backgroundColor: '#fffbeb',
                 color: '#b45309',
                 borderRadius: 6,
-                cursor: 'pointer',
+                cursor: rerunning ? 'not-allowed' : 'pointer',
+                opacity: rerunning ? 0.5 : 1,
                 marginBottom: '1rem',
               }}
             >
-              🔄 Re-run (New Attempt)
+              {rerunning ? '🔄 Re-running…' : '🔄 Re-run (New Attempt)'}
             </button>
           )}
 
