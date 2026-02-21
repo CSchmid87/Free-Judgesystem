@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation';
 interface CategorySummary {
   id: string;
   name: string;
-  weight: number;
   athleteCount: number;
 }
 
@@ -20,11 +19,9 @@ interface RunScoreResult {
 interface CategoryScoreDetail {
   categoryId: string;
   categoryName: string;
-  weight: number;
   bestRun: 1 | 2 | null;
   bestAverage: number | null;
   bestAttempt: number | null;
-  weighted: number | null;
   complete: boolean;
   run1: RunScoreResult | null;
   run2: RunScoreResult | null;
@@ -35,7 +32,7 @@ interface RankedAthlete {
   athleteBib: number;
   athleteName: string;
   complete: boolean;
-  weightedTotal: number | null;
+  total: number | null;
   categoryScores: CategoryScoreDetail[];
 }
 
@@ -141,7 +138,7 @@ function ResultsInner() {
           <option value="">— Select a category —</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
-              {cat.name} (weight: {cat.weight}, {cat.athleteCount} athletes)
+              {cat.name} ({cat.athleteCount} athletes)
             </option>
           ))}
         </select>
@@ -172,7 +169,7 @@ function ResultsInner() {
               {leaderboard.map((entry, idx) => {
                 const cat = entry.categoryScores[0];
                 const isTied =
-                  entry.weightedTotal !== null &&
+                  entry.total !== null &&
                   leaderboard.some(
                     (other) =>
                       other.athleteBib !== entry.athleteBib &&
@@ -194,7 +191,7 @@ function ResultsInner() {
                     <td style={tdStyle}>{entry.athleteBib}</td>
                     <td style={tdStyle}>
                       {entry.athleteName}
-                      {!entry.complete && entry.weightedTotal !== null && (
+                      {!entry.complete && entry.total !== null && (
                         <span
                           style={{
                             marginLeft: '0.5rem',
@@ -232,10 +229,10 @@ function ResultsInner() {
                         ...tdStyle,
                         textAlign: 'center',
                         fontWeight: 700,
-                        color: entry.weightedTotal !== null ? '#111' : '#9ca3af',
+                        color: entry.total !== null ? '#111' : '#9ca3af',
                       }}
                     >
-                      {entry.weightedTotal !== null ? entry.weightedTotal : '—'}
+                      {entry.total !== null ? entry.total : '—'}
                     </td>
                   </tr>
                 );

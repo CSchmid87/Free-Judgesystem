@@ -30,7 +30,6 @@ export function isAthlete(value: unknown): value is Athlete {
 export interface Category {
   id: string;
   name: string;
-  weight: number; // 0-100, weights across categories should sum to 100
   athletes: Athlete[];
 }
 
@@ -42,8 +41,7 @@ export function isCategory(value: unknown): value is Category {
   const obj = value as Record<string, unknown>;
   if (
     typeof obj.id !== 'string' || !obj.id ||
-    typeof obj.name !== 'string' || !obj.name ||
-    typeof obj.weight !== 'number' || obj.weight < 0 || obj.weight > 100
+    typeof obj.name !== 'string' || !obj.name
   ) return false;
   // Athletes: default to empty array if missing (backward compat)
   if ('athletes' in obj) {

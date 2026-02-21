@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
   const categorySummaries = event.categories.map((c) => ({
     id: c.id,
     name: c.name,
-    weight: c.weight,
     athleteCount: c.athletes.length,
   }));
 
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Rank athletes within this category using scoring.ts
-  // We pass only this category so the weighted total = category average
   const ranked = rankAthletes(
     event.scores ?? [],
     [category],

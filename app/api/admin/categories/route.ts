@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
 import type { Category } from '@/lib/types';
-import { isCategory } from '@/lib/types';
 
 /**
  * GET /api/admin/categories?key=...
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/categories?key=...
- * Add a new category. Body: { name: string, weight: number }
+ * Add a new category. Body: { name: string }
  */
 export async function POST(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
@@ -40,13 +39,9 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
-  const weight = typeof body?.weight === 'number' ? body.weight : -1;
 
   if (!name) {
     return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
-  }
-  if (weight < 0 || weight > 100) {
-    return NextResponse.json({ error: 'Weight must be between 0 and 100' }, { status: 400 });
   }
 
   // Check for duplicate name
@@ -58,7 +53,6 @@ export async function POST(request: NextRequest) {
   const newCategory: Category = {
     id: crypto.randomUUID(),
     name,
-    weight,
     athletes: [],
   };
 
@@ -105,7 +99,7 @@ export async function DELETE(request: NextRequest) {
 
 /**
  * PUT /api/admin/categories?key=...
- * Update an existing category. Body: { id: string, name?: string, weight?: number }
+ * Update an existing category. Body: { id: string, name?: string }
  */
 export async function PUT(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
@@ -132,13 +126,9 @@ export async function PUT(request: NextRequest) {
 
   const existing = categories[idx];
   const name = typeof body?.name === 'string' ? body.name.trim() : existing.name;
-  const weight = typeof body?.weight === 'number' ? body.weight : existing.weight;
 
   if (!name) {
     return NextResponse.json({ error: 'Category name cannot be empty' }, { status: 400 });
-  }
-  if (weight < 0 || weight > 100) {
-    return NextResponse.json({ error: 'Weight must be between 0 and 100' }, { status: 400 });
   }
 
   // Check duplicate name (excluding self)
@@ -147,7 +137,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const updatedCategories = [...categories];
-  updatedCategories[idx] = { id, name, weight, athletes: existing.athletes ?? [] };
+  updatedCategories[idx] = { id, name, athletes: existing.athletes ?? [] };
 
   const updated = updateEvent({ categories: updatedCategories });
   return NextResponse.json({ category: updatedCategories[idx], categories: updated.categories });

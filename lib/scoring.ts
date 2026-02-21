@@ -26,15 +26,15 @@ export interface RunScoreResult {
  *
  * @property complete     - true only when every category has a complete best
  *                          run score.
- * @property weightedTotal - Weighted sum of best-run averages across categories
- *                           (rounded to 2 dp), or null if no data at all.
+ * @property total        - Sum of best-run averages across categories
+ *                          (rounded to 2 dp), or null if no data at all.
  * @property categoryScores - Per-category breakdown.
  */
 export interface FinalScoreResult {
   athleteBib: number;
   athleteName: string;
   complete: boolean;
-  weightedTotal: number | null;
+  total: number | null;
   categoryScores: CategoryScoreDetail[];
 }
 
@@ -45,7 +45,6 @@ export interface FinalScoreResult {
  *                           null when no scores exist.
  * @property bestAverage   - The best run average, or null.
  * @property bestAttempt   - Which attempt of the best run was used.
- * @property weighted      - bestAverage × (weight / 100), or null.
  * @property complete      - true when the best run has all 3 judge scores.
  * @property run1          - RunScoreResult for the best attempt of run 1 (or
  *                           null if no scores).
@@ -55,11 +54,9 @@ export interface FinalScoreResult {
 export interface CategoryScoreDetail {
   categoryId: string;
   categoryName: string;
-  weight: number;
   bestRun: 1 | 2 | null;
   bestAverage: number | null;
   bestAttempt: number | null;
-  weighted: number | null;
   complete: boolean;
   run1: RunScoreResult | null;
   run2: RunScoreResult | null;
@@ -68,7 +65,7 @@ export interface CategoryScoreDetail {
 /**
  * Ranked athlete entry returned by `rankAthletes`.
  *
- * @property rank - 1-based rank. Athletes with identical weightedTotal share
+ * @property rank - 1-based rank. Athletes with identical total share
  *                  the same rank (dense ranking). Athletes with null totals are
  *                  ranked last and share the same last rank.
  */
@@ -160,13 +157,13 @@ export function computeRunScore(
 /**
  * Compute the final score for a single athlete across all categories.
  *
- * For each category the best run (higher average) is selected. The weighted
- * total is: Σ (bestAverage × weight / 100).
+ * For each category the best run (higher average) is selected. The total
+ * is: Σ bestAverage.
  *
  * **Incomplete handling**: If any category lacks a complete best-run score,
- * `complete` is `false`. The `weightedTotal` is still computed from whatever
+ * `complete` is `false`. The `total` is still computed from whatever
  * data is available (partial averages contribute). If *no* category has any
- * score data, `weightedTotal` is `null`.
+ * score data, `total` is `null`.
  *
  * @param scores      All scores in the event.
  * @param categories  All categories in the event.
@@ -181,7 +178,7 @@ export function computeFinalScore(
   const categoryScores: CategoryScoreDetail[] = [];
   let allComplete = true;
   let hasAnyScore = false;
-  let weightedSum = 0;
+  let sum = 0;
 
   for (const cat of categories) {
     const run1 = computeRunScore(scores, cat.id, athlete.bib, 1);
@@ -217,22 +214,17 @@ export function computeFinalScore(
 
     if (!catComplete) allComplete = false;
 
-    const weighted =
-      bestAverage !== null ? round2(bestAverage * cat.weight / 100) : null;
-
-    if (weighted !== null) {
+    if (bestAverage !== null) {
       hasAnyScore = true;
-      weightedSum += weighted;
+      sum += bestAverage;
     }
 
     categoryScores.push({
       categoryId: cat.id,
       categoryName: cat.name,
-      weight: cat.weight,
       bestRun,
       bestAverage,
       bestAttempt,
-      weighted,
       complete: catComplete,
       run1,
       run2,
@@ -243,16 +235,16 @@ export function computeFinalScore(
     athleteBib: athlete.bib,
     athleteName: athlete.name,
     complete: allComplete && categories.length > 0,
-    weightedTotal: hasAnyScore ? round2(weightedSum) : null,
+    total: hasAnyScore ? round2(sum) : null,
     categoryScores,
   };
 }
 
 /**
- * Rank all athletes using their final weighted totals.
+ * Rank all athletes using their final totals.
  *
  * Ranking uses dense ranking (1, 2, 2, 3 …). Athletes are sorted by
- * `weightedTotal` descending. Athletes with `null` totals (no scores) are
+ * `total` descending. Athletes with `null` totals (no scores) are
  * placed last and share the same final rank.
  *
  * **Incomplete handling**: Athletes whose `complete` flag is `false` are still
@@ -273,18 +265,18 @@ export function rankAthletes(
   const finals = athletes.map((a) => computeFinalScore(scores, categories, a));
 
   // Separate scored and unscored
-  const scored = finals.filter((f) => f.weightedTotal !== null);
-  const unscored = finals.filter((f) => f.weightedTotal === null);
+  const scored = finals.filter((f) => f.total !== null);
+  const unscored = finals.filter((f) => f.total === null);
 
-  // Sort scored descending by weightedTotal
-  scored.sort((a, b) => (b.weightedTotal ?? 0) - (a.weightedTotal ?? 0));
+  // Sort scored descending by total
+  scored.sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
 
   // Assign dense ranks
   const ranked: RankedAthlete[] = [];
   let currentRank = 1;
 
   for (let i = 0; i < scored.length; i++) {
-    if (i > 0 && scored[i].weightedTotal !== scored[i - 1].weightedTotal) {
+    if (i > 0 && scored[i].total !== scored[i - 1].total) {
       currentRank = i + 1;
     }
     ranked.push({ ...scored[i], rank: currentRank });
