@@ -70,6 +70,11 @@ export async function POST(request: NextRequest) {
         J3: generateKey(),
       },
       categories: [],
+      liveState: {
+        activeCategoryId: null,
+        activeRun: 1,
+        activeAthleteIndex: 0,
+      },
     };
 
     saveEvent(event);
