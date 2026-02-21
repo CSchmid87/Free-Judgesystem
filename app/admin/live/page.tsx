@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface CategorySummary {
@@ -26,6 +26,8 @@ interface LiveState {
   activeAthleteIndex: number;
 }
 
+type JudgeScores = Record<string, number | null>;
+
 export default function LiveControlPage() {
   return (
     <Suspense fallback={<main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}><p>Loading…</p></main>}>
@@ -45,6 +47,7 @@ function LiveControlInner() {
     activeRun: 1,
     activeAthleteIndex: 0,
   });
+  const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,6 +59,7 @@ function LiveControlInner() {
       setLiveState(data.liveState);
       setCategories(data.categories);
       setActiveCategory(data.activeCategory);
+      setJudgeScores(data.judgeScores ?? { J1: null, J2: null, J3: null });
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -66,6 +70,17 @@ function LiveControlInner() {
 
   useEffect(() => {
     fetchLive();
+  }, [fetchLive]);
+
+  // Poll every 2 seconds for judge score updates
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      fetchLive();
+    }, 2000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [fetchLive]);
 
   const updateLive = async (patch: Partial<LiveState>) => {
@@ -198,6 +213,48 @@ function LiveControlInner() {
             </div>
           ) : (
             <div style={{ color: '#6b7280', marginBottom: '0.75rem' }}>No athletes in this category.</div>
+          )}
+
+          {/* Judge score tiles */}
+          {currentAthlete && (
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+              {(['J1', 'J2', 'J3'] as const).map((role) => {
+                const score = judgeScores[role];
+                const submitted = score !== null;
+                return (
+                  <div
+                    key={role}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      borderRadius: 6,
+                      border: `2px solid ${submitted ? '#16a34a' : '#d1d5db'}`,
+                      backgroundColor: submitted ? '#f0fdf4' : '#f9fafb',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>
+                      {role}
+                    </div>
+                    <div style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 700,
+                      color: submitted ? '#16a34a' : '#d1d5db',
+                    }}>
+                      {submitted ? score : '—'}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      marginTop: '0.25rem',
+                      color: submitted ? '#16a34a' : '#9ca3af',
+                      fontWeight: 500,
+                    }}>
+                      {submitted ? '✓ Submitted' : 'Pending'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {/* Prev / Next */}

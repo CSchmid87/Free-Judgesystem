@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
+import { JUDGE_ROLES } from '@/lib/types';
 import type { LiveState } from '@/lib/types';
 
 /**
@@ -29,6 +30,29 @@ export async function GET(request: NextRequest) {
     ? event.categories.find((c) => c.id === liveState.activeCategoryId) ?? null
     : null;
 
+  // Collect judge scores for the active athlete/run
+  const scores = event.scores ?? [];
+  let judgeScores: Record<string, number | null> = { J1: null, J2: null, J3: null };
+
+  if (activeCategory && activeCategory.athletes.length > 0) {
+    const idx = Math.min(
+      Math.max(liveState.activeAthleteIndex, 0),
+      activeCategory.athletes.length - 1,
+    );
+    const athlete = activeCategory.athletes[idx];
+
+    for (const role of JUDGE_ROLES) {
+      const s = scores.find(
+        (sc) =>
+          sc.judgeRole === role &&
+          sc.categoryId === liveState.activeCategoryId &&
+          sc.athleteBib === athlete.bib &&
+          sc.run === liveState.activeRun,
+      );
+      judgeScores[role] = s?.value ?? null;
+    }
+  }
+
   return NextResponse.json({
     liveState,
     categories: event.categories.map((c) => ({
@@ -43,6 +67,7 @@ export async function GET(request: NextRequest) {
           athletes: activeCategory.athletes,
         }
       : null,
+    judgeScores,
   });
 }
 
