@@ -54,6 +54,17 @@ export function isCategory(value: unknown): value is Category {
 }
 
 /**
+ * A score submitted by a judge for a specific athlete/category/run.
+ */
+export interface Score {
+  judgeRole: JudgeRole;
+  categoryId: string;
+  athleteBib: number;
+  run: 1 | 2;
+  value: number; // 1-100
+}
+
+/**
  * Live event state — tracks the active category, run, and athlete.
  */
 export interface LiveState {
@@ -72,6 +83,7 @@ export interface LiveState {
  * @property judgeKeys  - Map of judge role → secret key
  * @property categories - Scoring categories for the event
  * @property liveState  - Current live competition state
+ * @property scores     - All submitted judge scores
  */
 export interface EventData {
   id: string;
@@ -81,6 +93,7 @@ export interface EventData {
   judgeKeys: Record<JudgeRole, string>;
   categories: Category[];
   liveState: LiveState;
+  scores: Score[];
 }
 
 /**
@@ -109,6 +122,11 @@ export function isEventData(value: unknown): value is EventData {
   if ('categories' in obj) {
     if (!Array.isArray(obj.categories)) return false;
     if (!obj.categories.every(isCategory)) return false;
+  }
+
+  // Scores: optional for backward compat
+  if ('scores' in obj) {
+    if (!Array.isArray(obj.scores)) return false;
   }
 
   // LiveState: optional for backward compat
