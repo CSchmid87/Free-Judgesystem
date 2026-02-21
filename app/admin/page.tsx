@@ -32,6 +32,15 @@ export default function AdminPage() {
   const [newAthleteName, setNewAthleteName] = useState('');
   const [athleteError, setAthleteError] = useState('');
 
+  // CSV import state
+  const [csvText, setCsvText] = useState('');
+  const [importResult, setImportResult] = useState<{
+    added: number;
+    skipped: number[];
+    errors: { line: number; message: string }[];
+  } | null>(null);
+  const [importing, setImporting] = useState(false);
+
   function getKey() {
     return new URLSearchParams(window.location.search).get('key') ?? '';
   }
@@ -147,6 +156,8 @@ export default function AdminPage() {
     setNewBib('');
     setNewAthleteName('');
     setAthleteError('');
+    setCsvText('');
+    setImportResult(null);
   }
 
   async function handleAddAthlete(e: React.FormEvent) {
@@ -194,6 +205,42 @@ export default function AdminPage() {
 
     const data = await res.json();
     setAthletes(data.athletes);
+  }
+
+  async function handleCsvImport() {
+    if (!expandedCat || !csvText.trim()) return;
+    setImporting(true);
+    setAthleteError('');
+    setImportResult(null);
+    const key = getKey();
+
+    try {
+      const res = await fetch(
+        `/api/admin/categories/${encodeURIComponent(expandedCat)}/athletes/import?key=${encodeURIComponent(key)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csv: csvText }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        setAthleteError(data.error || 'Import failed');
+        return;
+      }
+
+      setAthletes(data.athletes);
+      setImportResult({ added: data.added, skipped: data.skipped, errors: data.errors });
+      if (data.added > 0) {
+        setCsvText('');
+        loadCategories();
+      }
+    } catch {
+      setAthleteError('Import request failed');
+    } finally {
+      setImporting(false);
+    }
   }
 
   const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0);
@@ -329,6 +376,48 @@ export default function AdminPage() {
                             </table>
                           )}
                           {athleteError && <p style={styles.error}>{athleteError}</p>}
+
+                          {/* CSV Import */}
+                          <details style={styles.importSection}>
+                            <summary style={styles.importSummary}>Import from CSV</summary>
+                            <div style={styles.importBody}>
+                              <textarea
+                                value={csvText}
+                                onChange={(e) => { setCsvText(e.target.value); setImportResult(null); }}
+                                placeholder={'bib,name\n1,Anna Meier\n2,Lisa Schmidt'}
+                                rows={5}
+                                style={styles.textarea}
+                              />
+                              <button
+                                type="button"
+                                style={styles.btnAdd}
+                                onClick={handleCsvImport}
+                                disabled={importing || !csvText.trim()}
+                              >
+                                {importing ? 'Importing…' : 'Import'}
+                              </button>
+                              {importResult && (
+                                <div style={styles.importResult}>
+                                  <p style={{ color: '#198754', margin: '0.25rem 0' }}>
+                                    {importResult.added} added
+                                    {importResult.skipped.length > 0 && (
+                                      <>, {importResult.skipped.length} skipped (bibs: {importResult.skipped.join(', ')})</>
+                                    )}
+                                  </p>
+                                  {importResult.errors.length > 0 && (
+                                    <ul style={styles.errorList}>
+                                      {importResult.errors.map((e, i) => (
+                                        <li key={i} style={{ color: '#e00' }}>
+                                          {e.line > 0 ? `Line ${e.line}: ` : ''}{e.message}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </details>
+
                           <form onSubmit={handleAddAthlete} style={styles.addForm}>
                             <input
                               type="number"
@@ -534,5 +623,40 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.3rem 0.5rem',
     borderBottom: '1px solid #eee',
     fontSize: '0.85rem',
+  },
+  importSection: {
+    margin: '0.75rem 0',
+    border: '1px solid #dee2e6',
+    borderRadius: 4,
+    padding: '0.25rem',
+  },
+  importSummary: {
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    color: '#0070f3',
+    padding: '0.3rem 0.5rem',
+  },
+  importBody: {
+    padding: '0.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  textarea: {
+    width: '100%',
+    padding: '0.4rem 0.5rem',
+    fontSize: '0.85rem',
+    fontFamily: 'monospace',
+    border: '1px solid #ccc',
+    borderRadius: 4,
+    resize: 'vertical',
+  },
+  importResult: {
+    fontSize: '0.85rem',
+  },
+  errorList: {
+    margin: '0.25rem 0',
+    paddingLeft: '1.25rem',
+    fontSize: '0.8rem',
   },
 };
