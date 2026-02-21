@@ -61,6 +61,7 @@ export interface Score {
   categoryId: string;
   athleteBib: number;
   run: 1 | 2;
+  attempt: number; // attempt number within a run (starts at 1, incremented by re-run)
   value: number; // 1-100
 }
 
@@ -71,6 +72,7 @@ export interface LiveState {
   activeCategoryId: string | null;
   activeRun: 1 | 2;
   activeAthleteIndex: number; // index into sorted athletes array, 0 when empty
+  activeAttemptNumber: number; // attempt within a run, starts at 1, incremented by re-run
 }
 
 /**
@@ -143,6 +145,8 @@ export function isEventData(value: unknown): value is EventData {
     if (ls.activeCategoryId !== null && typeof ls.activeCategoryId !== 'string') return false;
     if (ls.activeRun !== 1 && ls.activeRun !== 2) return false;
     if (typeof ls.activeAthleteIndex !== 'number') return false;
+    // activeAttemptNumber: optional for backward compat (defaults to 1)
+    if ('activeAttemptNumber' in ls && typeof ls.activeAttemptNumber !== 'number') return false;
   }
 
   return true;

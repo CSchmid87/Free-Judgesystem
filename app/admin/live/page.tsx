@@ -24,6 +24,7 @@ interface LiveState {
   activeCategoryId: string | null;
   activeRun: 1 | 2;
   activeAthleteIndex: number;
+  activeAttemptNumber: number;
 }
 
 type JudgeScores = Record<string, number | null>;
@@ -46,6 +47,7 @@ function LiveControlInner() {
     activeCategoryId: null,
     activeRun: 1,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   });
   const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
   const [isLocked, setIsLocked] = useState(false);
@@ -128,6 +130,10 @@ function LiveControlInner() {
 
   const handleToggleLock = () => {
     updateLive({ lock: !isLocked } as unknown as Partial<LiveState>);
+  };
+
+  const handleRerun = () => {
+    updateLive({ rerun: true } as unknown as Partial<LiveState>);
   };
 
   if (loading) {
@@ -216,6 +222,20 @@ function LiveControlInner() {
               }}
             >
               #{currentAthlete.bib} — {currentAthlete.name}
+              {(liveState.activeAttemptNumber ?? 1) > 1 && (
+                <span style={{
+                  marginLeft: '0.75rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  background: '#f59e0b',
+                  color: '#fff',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 12,
+                  verticalAlign: 'middle',
+                }}>
+                  Attempt {liveState.activeAttemptNumber}
+                </span>
+              )}
             </div>
           ) : (
             <div style={{ color: '#6b7280', marginBottom: '0.75rem' }}>No athletes in this category.</div>
@@ -282,6 +302,27 @@ function LiveControlInner() {
               }}
             >
               {isLocked ? '🔒 Locked — Click to Unlock' : '🔓 Unlocked — Click to Lock'}
+            </button>
+          )}
+
+          {/* Re-run button */}
+          {currentAthlete && (
+            <button
+              onClick={handleRerun}
+              style={{
+                width: '100%',
+                padding: '0.6rem 1rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                border: '2px solid #f59e0b',
+                backgroundColor: '#fffbeb',
+                color: '#b45309',
+                borderRadius: 6,
+                cursor: 'pointer',
+                marginBottom: '1rem',
+              }}
+            >
+              🔄 Re-run (New Attempt)
             </button>
           )}
 

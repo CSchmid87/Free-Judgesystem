@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
     activeCategoryId: null,
     activeRun: 1,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   };
+  const attempt = liveState.activeAttemptNumber ?? 1;
 
   // Derive the active category & its athletes for the UI
   const activeCategory = liveState.activeCategoryId
@@ -47,7 +49,8 @@ export async function GET(request: NextRequest) {
           sc.judgeRole === role &&
           sc.categoryId === liveState.activeCategoryId &&
           sc.athleteBib === athlete.bib &&
-          sc.run === liveState.activeRun,
+          sc.run === liveState.activeRun &&
+          (sc.attempt ?? 1) === attempt,
       );
       judgeScores[role] = s?.value ?? null;
     }
@@ -101,6 +104,7 @@ export async function PUT(request: NextRequest) {
     activeCategoryId: null,
     activeRun: 1,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   };
 
   // Apply partial updates
@@ -118,6 +122,7 @@ export async function PUT(request: NextRequest) {
     // Reset athlete index when category changes
     if (body.activeCategoryId !== currentLive.activeCategoryId) {
       updated.activeAthleteIndex = 0;
+      updated.activeAttemptNumber = 1;
     }
   }
 
@@ -129,6 +134,10 @@ export async function PUT(request: NextRequest) {
       );
     }
     updated.activeRun = body.activeRun;
+    // Reset attempt when run changes
+    if (body.activeRun !== currentLive.activeRun) {
+      updated.activeAttemptNumber = 1;
+    }
   }
 
   if ('activeAthleteIndex' in body) {
@@ -150,6 +159,11 @@ export async function PUT(request: NextRequest) {
     } else if (updated.activeAthleteIndex >= count) {
       updated.activeAthleteIndex = count - 1;
     }
+  }
+
+  // Handle re-run action: increment attempt number
+  if ('rerun' in body && body.rerun === true) {
+    updated.activeAttemptNumber = (updated.activeAttemptNumber ?? 1) + 1;
   }
 
   // Handle lock / unlock action

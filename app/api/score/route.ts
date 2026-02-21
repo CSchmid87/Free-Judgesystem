@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
     activeCategoryId: null,
     activeRun: 1 as const,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   };
+  const attempt = live.activeAttemptNumber ?? 1;
 
   if (!live.activeCategoryId) {
     return NextResponse.json(
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
     categoryId: live.activeCategoryId,
     athleteBib: athlete.bib,
     run: live.activeRun,
+    attempt,
     value,
   };
 
@@ -107,7 +110,8 @@ export async function POST(request: NextRequest) {
         s.judgeRole === score.judgeRole &&
         s.categoryId === score.categoryId &&
         s.athleteBib === score.athleteBib &&
-        s.run === score.run
+        s.run === score.run &&
+        (s.attempt ?? 1) === score.attempt
       ),
   );
   scores.push(score);
@@ -143,7 +147,9 @@ export async function GET(request: NextRequest) {
     activeCategoryId: null,
     activeRun: 1 as const,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   };
+  const attempt = live.activeAttemptNumber ?? 1;
 
   if (!live.activeCategoryId) {
     return NextResponse.json(
@@ -173,7 +179,8 @@ export async function GET(request: NextRequest) {
       s.judgeRole === role &&
       s.categoryId === live.activeCategoryId &&
       s.athleteBib === athlete.bib &&
-      s.run === live.activeRun,
+      s.run === live.activeRun &&
+      (s.attempt ?? 1) === attempt,
   );
 
   return NextResponse.json(
