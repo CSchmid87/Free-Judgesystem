@@ -84,6 +84,7 @@ export interface LiveState {
  * @property categories - Scoring categories for the event
  * @property liveState  - Current live competition state
  * @property scores     - All submitted judge scores
+ * @property lockedRuns - Lock keys ("categoryId:run") preventing further scoring
  */
 export interface EventData {
   id: string;
@@ -94,6 +95,7 @@ export interface EventData {
   categories: Category[];
   liveState: LiveState;
   scores: Score[];
+  lockedRuns: string[];
 }
 
 /**
@@ -127,6 +129,11 @@ export function isEventData(value: unknown): value is EventData {
   // Scores: optional for backward compat
   if ('scores' in obj) {
     if (!Array.isArray(obj.scores)) return false;
+  }
+
+  // LockedRuns: optional for backward compat
+  if ('lockedRuns' in obj) {
+    if (!Array.isArray(obj.lockedRuns)) return false;
   }
 
   // LiveState: optional for backward compat

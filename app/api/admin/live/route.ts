@@ -53,6 +53,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Determine lock state for current category/run
+  const lockedRuns = event.lockedRuns ?? [];
+  const currentLockKey = liveState.activeCategoryId
+    ? `${liveState.activeCategoryId}:${liveState.activeRun}`
+    : null;
+  const isLocked = currentLockKey ? lockedRuns.includes(currentLockKey) : false;
+
   return NextResponse.json({
     liveState,
     categories: event.categories.map((c) => ({
@@ -68,6 +75,7 @@ export async function GET(request: NextRequest) {
         }
       : null,
     judgeScores,
+    isLocked,
   });
 }
 
@@ -144,7 +152,33 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  updateEvent({ liveState: updated });
+  // Handle lock / unlock action
+  const patch: { liveState: LiveState; lockedRuns?: string[] } = { liveState: updated };
 
-  return NextResponse.json({ liveState: updated });
+  if ('lock' in body && typeof body.lock === 'boolean') {
+    const lockCatId = updated.activeCategoryId;
+    const lockRun = updated.activeRun;
+
+    if (lockCatId) {
+      const lockKey = `${lockCatId}:${lockRun}`;
+      const existing = event.lockedRuns ?? [];
+
+      if (body.lock && !existing.includes(lockKey)) {
+        patch.lockedRuns = [...existing, lockKey];
+      } else if (!body.lock) {
+        patch.lockedRuns = existing.filter((k) => k !== lockKey);
+      }
+    }
+  }
+
+  updateEvent(patch);
+
+  // Return isLocked for UI
+  const finalLockedRuns = patch.lockedRuns ?? event.lockedRuns ?? [];
+  const finalLockKey = updated.activeCategoryId
+    ? `${updated.activeCategoryId}:${updated.activeRun}`
+    : null;
+  const isLocked = finalLockKey ? finalLockedRuns.includes(finalLockKey) : false;
+
+  return NextResponse.json({ liveState: updated, isLocked });
 }

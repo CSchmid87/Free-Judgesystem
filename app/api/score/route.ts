@@ -77,6 +77,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  /* ── 4b. Reject if category/run is locked ─────────────────── */
+  const lockKey = `${live.activeCategoryId}:${live.activeRun}`;
+  if ((event.lockedRuns ?? []).includes(lockKey)) {
+    return NextResponse.json(
+      { error: 'This run is locked' },
+      { status: 423 },
+    );
+  }
+
   const idx = Math.min(
     Math.max(live.activeAthleteIndex, 0),
     athletes.length - 1,

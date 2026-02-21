@@ -48,6 +48,7 @@ function LiveControlInner() {
     activeAthleteIndex: 0,
   });
   const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
+  const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -60,6 +61,7 @@ function LiveControlInner() {
       setCategories(data.categories);
       setActiveCategory(data.activeCategory);
       setJudgeScores(data.judgeScores ?? { J1: null, J2: null, J3: null });
+      setIsLocked(data.isLocked ?? false);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -122,6 +124,10 @@ function LiveControlInner() {
 
   const handleSelectAthlete = (index: number) => {
     updateLive({ activeAthleteIndex: index });
+  };
+
+  const handleToggleLock = () => {
+    updateLive({ lock: !isLocked } as unknown as Partial<LiveState>);
   };
 
   if (loading) {
@@ -255,6 +261,28 @@ function LiveControlInner() {
                 );
               })}
             </div>
+          )}
+
+          {/* Lock / Unlock toggle */}
+          {currentAthlete && (
+            <button
+              onClick={handleToggleLock}
+              style={{
+                width: '100%',
+                padding: '0.6rem 1rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                border: '2px solid',
+                borderColor: isLocked ? '#dc2626' : '#16a34a',
+                backgroundColor: isLocked ? '#fef2f2' : '#f0fdf4',
+                color: isLocked ? '#dc2626' : '#16a34a',
+                borderRadius: 6,
+                cursor: 'pointer',
+                marginBottom: '1rem',
+              }}
+            >
+              {isLocked ? '🔒 Locked — Click to Unlock' : '🔓 Unlocked — Click to Lock'}
+            </button>
           )}
 
           {/* Prev / Next */}

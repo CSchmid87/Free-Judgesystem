@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
         activeAthleteIndex: 0,
       },
       scores: [],
+      lockedRuns: [],
     };
 
     saveEvent(event);
