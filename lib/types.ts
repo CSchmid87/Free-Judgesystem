@@ -54,6 +54,15 @@ export function isCategory(value: unknown): value is Category {
 }
 
 /**
+ * Live event state — tracks the active category, run, and athlete.
+ */
+export interface LiveState {
+  activeCategoryId: string | null;
+  activeRun: 1 | 2;
+  activeAthleteIndex: number; // index into sorted athletes array, 0 when empty
+}
+
+/**
  * EventData represents a persistent event record.
  *
  * @property id         - Unique identifier (non-empty string)
@@ -62,6 +71,7 @@ export function isCategory(value: unknown): value is Category {
  * @property adminKey   - Cryptographic secret for admin access
  * @property judgeKeys  - Map of judge role → secret key
  * @property categories - Scoring categories for the event
+ * @property liveState  - Current live competition state
  */
 export interface EventData {
   id: string;
@@ -70,6 +80,7 @@ export interface EventData {
   adminKey: string;
   judgeKeys: Record<JudgeRole, string>;
   categories: Category[];
+  liveState: LiveState;
 }
 
 /**
@@ -98,6 +109,15 @@ export function isEventData(value: unknown): value is EventData {
   if ('categories' in obj) {
     if (!Array.isArray(obj.categories)) return false;
     if (!obj.categories.every(isCategory)) return false;
+  }
+
+  // LiveState: optional for backward compat
+  if ('liveState' in obj) {
+    if (!obj.liveState || typeof obj.liveState !== 'object') return false;
+    const ls = obj.liveState as Record<string, unknown>;
+    if (ls.activeCategoryId !== null && typeof ls.activeCategoryId !== 'string') return false;
+    if (ls.activeRun !== 1 && ls.activeRun !== 2) return false;
+    if (typeof ls.activeAthleteIndex !== 'number') return false;
   }
 
   return true;
