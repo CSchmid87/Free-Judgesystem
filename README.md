@@ -1,61 +1,74 @@
-# Git Installation Helper
+# Free Judgesystem
 
-This small workspace contains a helper script for installing Git on macOS using Homebrew.
+A minimal Next.js 15 application with a JSON-file persistence layer for event data.
 
-## Usage
+## Features
 
-1. **Detect environment**
-   ```sh
-   sw_vers -productVersion
-   uname -m
-   git --version
-   which -a git
-   which brew && brew --version
-   xcode-select -p || echo "no xcode-select path"
-   ```
+- **Next.js 15** with the App Router and React 19
+- **REST API** — `GET` / `POST` at `/api/event`
+- **Atomic file persistence** — events are saved via temp-file-then-rename to prevent corruption
+- **TypeScript** with runtime type guards
 
-2. **Run the installer script**
-   ```sh
-   chmod +x install-git.sh
-   ./install-git.sh
-   ```
+## Getting Started
 
-   The script will prompt you if it needs to install Homebrew and will install Git via Homebrew.
+### Prerequisites
 
-3. **Configure Git**
-   ```sh
-   git config --global user.name "Your Name"
-   git config --global user.email "you@example.com"
-   git config --global --list
-   ```
+- Node.js 18+ and npm
 
-4. **Upgrade / Uninstall**
-   ```sh
-   brew update && brew upgrade git
-   brew uninstall git
-   ```
+### Installation
 
-5. **Connect to your GitHub repository**
-   After Git is installed, you can optionally initialize the repository and add your GitHub remote in one step:
-   ```sh
-   # install Git and link to your repo in a single command
-   chmod +x install-git.sh
-   ./install-git.sh https://github.com/CSchmid87/Free-Judgesystem.git
-   ```
+```sh
+npm install
+```
 
-   If you prefer to run the steps manually:
-   ```sh
-   git init
-   git remote add origin https://github.com/CSchmid87/Free-Judgesystem.git
-   git fetch origin
-   git branch -M main
-   git push -u origin main
-   ```
-   If the repository already contains commits, you may need to pull or merge instead.
-   This workspace is now linked to your GitHub repository.
+### Development
 
+```sh
+npm run dev
+```
 
-## Notes
-- Requires administrator privileges for Homebrew installation.
-- Works on macOS 10.14+ (tested on 11/12/13/14) on both Intel and Apple Silicon.
-- The script does not modify shell profiles; if you need `brew` on PATH, add it manually.
+The app starts at [http://localhost:3000](http://localhost:3000).
+
+### Production
+
+```sh
+npm run build
+npm start
+```
+
+## API
+
+### `GET /api/event`
+
+Returns the stored event or `404` if none exists.
+
+### `POST /api/event`
+
+Creates/replaces the stored event. Body (JSON):
+
+```json
+{
+  "id": "evt-1",
+  "name": "My Event",
+  "createdAt": "2026-02-21T00:00:00.000Z"
+}
+```
+
+Returns `201` on success, `400` on validation failure.
+
+## Project Structure
+
+```
+app/
+  layout.tsx          – Root layout
+  page.tsx            – Home page
+  api/event/route.ts  – Event API endpoint
+lib/
+  store.ts            – File-based persistence (atomic writes)
+  types.ts            – EventData interface & type guard
+data/                 – Runtime storage (gitignored)
+```
+
+## License
+
+Private
