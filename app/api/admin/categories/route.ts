@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
     id: crypto.randomUUID(),
     name,
     weight,
+    athletes: [],
   };
 
   const updated = updateEvent({
@@ -146,7 +147,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const updatedCategories = [...categories];
-  updatedCategories[idx] = { id, name, weight };
+  updatedCategories[idx] = { id, name, weight, athletes: existing.athletes ?? [] };
 
   const updated = updateEvent({ categories: updatedCategories });
   return NextResponse.json({ category: updatedCategories[idx], categories: updated.categories });
