@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { loadEvent, saveEvent } from '@/lib/store';
-import { validateAdminKey } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { loadEvent } from '@/lib/store';
 
 /**
  * GET /api/event

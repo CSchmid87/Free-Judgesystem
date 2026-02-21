@@ -13,8 +13,29 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow the create page without a key (bootstrap)
+  // /admin/create: allow without key only for bootstrap (no event yet).
+  // If an event exists, require admin key to access create page.
   if (pathname === '/admin/create') {
+    const key = request.nextUrl.searchParams.get('key');
+    // Check if an event exists via internal API
+    const checkUrl = new URL('/api/admin/create-event', request.url);
+    const checkRes = await fetch(checkUrl);
+    const checkData = await checkRes.json();
+    if (!checkData.exists) {
+      // No event yet — allow bootstrap
+      return NextResponse.next();
+    }
+    // Event exists — require admin key
+    if (!key) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const validateUrl = new URL('/api/auth/validate', request.url);
+    validateUrl.searchParams.set('key', key);
+    validateUrl.searchParams.set('role', 'admin');
+    const res = await fetch(validateUrl);
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.next();
   }
 

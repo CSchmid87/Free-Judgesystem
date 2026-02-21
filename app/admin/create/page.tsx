@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface CreatedEvent {
   id: string;
@@ -15,17 +15,47 @@ export default function CreateEventPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<CreatedEvent | null>(null);
+  const [existingName, setExistingName] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // Check if an event already exists on mount
+  useEffect(() => {
+    fetch('/api/admin/create-event')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.exists) setExistingName(data.name);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // If event exists and user hasn't confirmed, show confirmation
+    if (existingName && !showConfirm) {
+      setShowConfirm(true);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const res = await fetch('/api/admin/create-event', {
+      // Pass admin key from URL if overwriting
+      const params = new URLSearchParams(window.location.search);
+      const key = params.get('key');
+      const url = key
+        ? `/api/admin/create-event?key=${encodeURIComponent(key)}`
+        : '/api/admin/create-event';
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          confirm: showConfirm || !existingName,
+        }),
       });
 
       if (!res.ok) {
@@ -35,6 +65,7 @@ export default function CreateEventPage() {
 
       const event: CreatedEvent = await res.json();
       setCreated(event);
+      setShowConfirm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -47,9 +78,20 @@ export default function CreateEventPage() {
     return `${window.location.origin}${path}?key=${key}`;
   }
 
+  async function copyToClipboard(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      // Fallback: select text
+    }
+  }
+
   // ── After creation: show secret URLs ──────────────────────────
   if (created) {
     const adminUrl = buildUrl('/admin', created.adminKey);
+    const createUrl = buildUrl('/admin/create', created.adminKey);
     const judgeUrls = {
       J1: buildUrl('/judge', created.judgeKeys.J1),
       J2: buildUrl('/judge', created.judgeKeys.J2),
@@ -61,6 +103,7 @@ export default function CreateEventPage() {
         <h1 style={styles.heading}>Event Created</h1>
         <p style={styles.eventName}>
           <strong>{created.name}</strong>
+          <span style={styles.eventId}> (ID: {created.id})</span>
         </p>
 
         <div style={styles.warning}>
@@ -70,7 +113,15 @@ export default function CreateEventPage() {
 
         <section style={styles.section}>
           <h2 style={styles.subheading}>Admin URL</h2>
-          <code style={styles.url}>{adminUrl}</code>
+          <div style={styles.urlRow}>
+            <code style={styles.url}>{adminUrl}</code>
+            <button
+              style={styles.copyBtn}
+              onClick={() => copyToClipboard(adminUrl, 'admin')}
+            >
+              {copied === 'admin' ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
         </section>
 
         <section style={styles.section}>
@@ -78,7 +129,15 @@ export default function CreateEventPage() {
           {(['J1', 'J2', 'J3'] as const).map((role) => (
             <div key={role} style={styles.roleRow}>
               <strong>{role}:</strong>
-              <code style={styles.url}>{judgeUrls[role]}</code>
+              <div style={styles.urlRow}>
+                <code style={styles.url}>{judgeUrls[role]}</code>
+                <button
+                  style={styles.copyBtn}
+                  onClick={() => copyToClipboard(judgeUrls[role], role)}
+                >
+                  {copied === role ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
           ))}
         </section>
@@ -86,8 +145,7 @@ export default function CreateEventPage() {
         <button
           style={styles.button}
           onClick={() => {
-            setCreated(null);
-            setName('');
+            window.location.href = createUrl;
           }}
         >
           Create Another Event
@@ -100,13 +158,23 @@ export default function CreateEventPage() {
   return (
     <div style={styles.container}>
       <h1 style={styles.heading}>Create New Event</h1>
+
+      {existingName && (
+        <div style={styles.infoBox}>
+          An event already exists: <strong>{existingName}</strong>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} style={styles.form}>
         <label style={styles.label}>
           Event Name
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setShowConfirm(false);
+            }}
             required
             placeholder="e.g. Regional Championship 2026"
             style={styles.input}
@@ -116,9 +184,36 @@ export default function CreateEventPage() {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        <button type="submit" style={styles.button} disabled={loading || !name.trim()}>
-          {loading ? 'Creating…' : 'Create Event'}
+        {showConfirm && (
+          <div style={styles.confirmBox}>
+            <p style={{ margin: 0 }}>
+              ⚠️ This will <strong>permanently delete</strong> the existing event
+              &ldquo;{existingName}&rdquo; and all its keys. Are you sure?
+            </p>
+          </div>
+        )}
+
+        <button type="submit" style={
+          showConfirm
+            ? { ...styles.button, background: '#dc3545' }
+            : styles.button
+        } disabled={loading || !name.trim()}>
+          {loading
+            ? 'Creating…'
+            : showConfirm
+              ? 'Yes, Overwrite & Create'
+              : 'Create Event'}
         </button>
+
+        {showConfirm && (
+          <button
+            type="button"
+            style={{ ...styles.button, background: '#6c757d' }}
+            onClick={() => setShowConfirm(false)}
+          >
+            Cancel
+          </button>
+        )}
       </form>
     </div>
   );
@@ -165,6 +260,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     cursor: 'pointer',
   },
+  copyBtn: {
+    padding: '0.3rem 0.6rem',
+    fontSize: '0.8rem',
+    background: '#e9ecef',
+    color: '#333',
+    border: '1px solid #ccc',
+    borderRadius: 4,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
   error: {
     color: '#e00',
     margin: 0,
@@ -176,11 +282,30 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.75rem 1rem',
     marginBottom: '1.5rem',
   },
+  infoBox: {
+    background: '#d1ecf1',
+    border: '1px solid #0dcaf0',
+    borderRadius: 4,
+    padding: '0.75rem 1rem',
+    marginBottom: '1rem',
+  },
+  confirmBox: {
+    background: '#f8d7da',
+    border: '1px solid #dc3545',
+    borderRadius: 4,
+    padding: '0.75rem 1rem',
+  },
   section: {
     marginBottom: '1.5rem',
   },
   roleRow: {
     marginBottom: '0.75rem',
+  },
+  urlRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.5rem',
+    marginTop: '0.25rem',
   },
   url: {
     display: 'block',
@@ -189,10 +314,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     wordBreak: 'break-all',
     fontSize: '0.85rem',
-    marginTop: '0.25rem',
+    flex: 1,
   },
   eventName: {
     fontSize: '1.2rem',
     marginBottom: '1rem',
+  },
+  eventId: {
+    fontSize: '0.85rem',
+    color: '#666',
+    fontWeight: 'normal',
   },
 };
