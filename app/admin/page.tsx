@@ -466,13 +466,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.75rem',
   },
   section: { marginBottom: '2rem' },
-  badge: {
-    fontSize: '0.75rem',
-    color: '#fff',
-    padding: '0.2rem 0.5rem',
-    borderRadius: 4,
-    fontWeight: 'normal',
-  },
   muted: { color: '#888' },
   table: {
     width: '100%',

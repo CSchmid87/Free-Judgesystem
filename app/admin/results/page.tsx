@@ -223,7 +223,7 @@ function ResultsInner() {
                     <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
                       {cat?.bestRun ? `Run ${cat.bestRun}` : '—'}
                     </td>
-                    {/* Weighted total */}
+                    {/* Score total */}
                     <td
                       style={{
                         ...tdStyle,
