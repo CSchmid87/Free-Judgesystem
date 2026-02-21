@@ -10,17 +10,14 @@ interface Athlete {
 interface Category {
   id: string;
   name: string;
-  weight: number;
   athletes: Athlete[];
 }
 
 export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newName, setNewName] = useState('');
-  const [newWeight, setNewWeight] = useState<number>(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editWeight, setEditWeight] = useState<number>(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +68,7 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/categories?key=${encodeURIComponent(key)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName.trim(), weight: newWeight }),
+      body: JSON.stringify({ name: newName.trim() }),
     });
 
     if (!res.ok) {
@@ -83,7 +80,6 @@ export default function AdminPage() {
     const data = await res.json();
     setCategories(data.categories);
     setNewName('');
-    setNewWeight(0);
   }
 
   async function handleDelete(id: string) {
@@ -111,7 +107,7 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/categories?key=${encodeURIComponent(key)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, name: editName.trim(), weight: editWeight }),
+      body: JSON.stringify({ id, name: editName.trim() }),
     });
 
     if (!res.ok) {
@@ -243,8 +239,6 @@ export default function AdminPage() {
     }
   }
 
-  const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0);
-
   return (
     <div style={styles.container}>
       <h1 style={styles.heading}>Admin Dashboard</h1>
@@ -252,12 +246,6 @@ export default function AdminPage() {
       <section style={styles.section}>
         <h2 style={styles.subheading}>
           Categories
-          <span style={{
-            ...styles.badge,
-            background: totalWeight === 100 ? '#198754' : '#dc3545',
-          }}>
-            Weight: {totalWeight}/100
-          </span>
         </h2>
 
         {loading ? (
@@ -269,7 +257,6 @@ export default function AdminPage() {
             <thead>
               <tr>
                 <th style={styles.th}>Name</th>
-                <th style={{ ...styles.th, width: 80 }}>Weight</th>
                 <th style={{ ...styles.th, width: 140 }}>Actions</th>
               </tr>
             </thead>
@@ -284,16 +271,6 @@ export default function AdminPage() {
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           style={styles.inputSmall}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <input
-                          type="number"
-                          value={editWeight}
-                          onChange={(e) => setEditWeight(Number(e.target.value))}
-                          min={0}
-                          max={100}
-                          style={{ ...styles.inputSmall, width: 60 }}
                         />
                       </td>
                       <td style={styles.td}>
@@ -320,14 +297,12 @@ export default function AdminPage() {
                           ({(cat.athletes ?? []).length})
                         </span>
                       </td>
-                      <td style={styles.td}>{cat.weight}</td>
                       <td style={styles.td}>
                         <button
                           style={styles.btnEdit}
                           onClick={() => {
                             setEditingId(cat.id);
                             setEditName(cat.name);
-                            setEditWeight(cat.weight);
                           }}
                         >
                           Edit
@@ -341,7 +316,7 @@ export default function AdminPage() {
                 </tr>
                 {expandedCat === cat.id && (
                   <tr>
-                    <td colSpan={3} style={styles.athleteCell}>
+                    <td colSpan={2} style={styles.athleteCell}>
                       {athletesLoading ? (
                         <p style={styles.muted}>Loading athletes…</p>
                       ) : (
@@ -466,15 +441,6 @@ export default function AdminPage() {
             required
             style={styles.input}
           />
-          <input
-            type="number"
-            value={newWeight}
-            onChange={(e) => setNewWeight(Number(e.target.value))}
-            min={0}
-            max={100}
-            placeholder="Weight"
-            style={{ ...styles.input, width: 80 }}
-          />
           <button type="submit" style={styles.btnAdd} disabled={!newName.trim()}>
             Add
           </button>
@@ -500,13 +466,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.75rem',
   },
   section: { marginBottom: '2rem' },
-  badge: {
-    fontSize: '0.75rem',
-    color: '#fff',
-    padding: '0.2rem 0.5rem',
-    borderRadius: 4,
-    fontWeight: 'normal',
-  },
   muted: { color: '#888' },
   table: {
     width: '100%',

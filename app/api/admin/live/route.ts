@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
+import { JUDGE_ROLES } from '@/lib/types';
 import type { LiveState } from '@/lib/types';
 
 /**
@@ -22,12 +23,45 @@ export async function GET(request: NextRequest) {
     activeCategoryId: null,
     activeRun: 1,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   };
+  const attempt = liveState.activeAttemptNumber ?? 1;
 
   // Derive the active category & its athletes for the UI
   const activeCategory = liveState.activeCategoryId
     ? event.categories.find((c) => c.id === liveState.activeCategoryId) ?? null
     : null;
+
+  // Collect judge scores for the active athlete/run
+  const scores = event.scores ?? [];
+  let judgeScores: Record<string, number | null> = { J1: null, J2: null, J3: null };
+
+  if (activeCategory && activeCategory.athletes.length > 0) {
+    const idx = Math.min(
+      Math.max(liveState.activeAthleteIndex, 0),
+      activeCategory.athletes.length - 1,
+    );
+    const athlete = activeCategory.athletes[idx];
+
+    for (const role of JUDGE_ROLES) {
+      const s = scores.find(
+        (sc) =>
+          sc.judgeRole === role &&
+          sc.categoryId === liveState.activeCategoryId &&
+          sc.athleteBib === athlete.bib &&
+          sc.run === liveState.activeRun &&
+          (sc.attempt ?? 1) === attempt,
+      );
+      judgeScores[role] = s?.value ?? null;
+    }
+  }
+
+  // Determine lock state for current category/run
+  const lockedRuns = event.lockedRuns ?? [];
+  const currentLockKey = liveState.activeCategoryId
+    ? `${liveState.activeCategoryId}:${liveState.activeRun}`
+    : null;
+  const isLocked = currentLockKey ? lockedRuns.includes(currentLockKey) : false;
 
   return NextResponse.json({
     liveState,
@@ -43,6 +77,8 @@ export async function GET(request: NextRequest) {
           athletes: activeCategory.athletes,
         }
       : null,
+    judgeScores,
+    isLocked,
   });
 }
 
@@ -68,6 +104,7 @@ export async function PUT(request: NextRequest) {
     activeCategoryId: null,
     activeRun: 1,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   };
 
   // Apply partial updates
@@ -85,6 +122,7 @@ export async function PUT(request: NextRequest) {
     // Reset athlete index when category changes
     if (body.activeCategoryId !== currentLive.activeCategoryId) {
       updated.activeAthleteIndex = 0;
+      updated.activeAttemptNumber = 1;
     }
   }
 
@@ -96,6 +134,10 @@ export async function PUT(request: NextRequest) {
       );
     }
     updated.activeRun = body.activeRun;
+    // Reset attempt when run changes
+    if (body.activeRun !== currentLive.activeRun) {
+      updated.activeAttemptNumber = 1;
+    }
   }
 
   if ('activeAthleteIndex' in body) {
@@ -119,7 +161,38 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  updateEvent({ liveState: updated });
+  // Handle re-run action: increment attempt number
+  if ('rerun' in body && body.rerun === true) {
+    updated.activeAttemptNumber = (updated.activeAttemptNumber ?? 1) + 1;
+  }
 
-  return NextResponse.json({ liveState: updated });
+  // Handle lock / unlock action
+  const patch: { liveState: LiveState; lockedRuns?: string[] } = { liveState: updated };
+
+  if ('lock' in body && typeof body.lock === 'boolean') {
+    const lockCatId = updated.activeCategoryId;
+    const lockRun = updated.activeRun;
+
+    if (lockCatId) {
+      const lockKey = `${lockCatId}:${lockRun}`;
+      const existing = event.lockedRuns ?? [];
+
+      if (body.lock && !existing.includes(lockKey)) {
+        patch.lockedRuns = [...existing, lockKey];
+      } else if (!body.lock) {
+        patch.lockedRuns = existing.filter((k) => k !== lockKey);
+      }
+    }
+  }
+
+  updateEvent(patch);
+
+  // Return isLocked for UI
+  const finalLockedRuns = patch.lockedRuns ?? event.lockedRuns ?? [];
+  const finalLockKey = updated.activeCategoryId
+    ? `${updated.activeCategoryId}:${updated.activeRun}`
+    : null;
+  const isLocked = finalLockKey ? finalLockedRuns.includes(finalLockKey) : false;
+
+  return NextResponse.json({ liveState: updated, isLocked });
 }

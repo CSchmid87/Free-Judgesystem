@@ -74,7 +74,10 @@ export async function POST(request: NextRequest) {
         activeCategoryId: null,
         activeRun: 1,
         activeAthleteIndex: 0,
+        activeAttemptNumber: 1,
       },
+      scores: [],
+      lockedRuns: [],
     };
 
     saveEvent(event);

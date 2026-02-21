@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface CategorySummary {
@@ -24,7 +24,10 @@ interface LiveState {
   activeCategoryId: string | null;
   activeRun: 1 | 2;
   activeAthleteIndex: number;
+  activeAttemptNumber: number;
 }
+
+type JudgeScores = Record<string, number | null>;
 
 export default function LiveControlPage() {
   return (
@@ -44,7 +47,11 @@ function LiveControlInner() {
     activeCategoryId: null,
     activeRun: 1,
     activeAthleteIndex: 0,
+    activeAttemptNumber: 1,
   });
+  const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
+  const [isLocked, setIsLocked] = useState(false);
+  const [rerunning, setRerunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,6 +63,8 @@ function LiveControlInner() {
       setLiveState(data.liveState);
       setCategories(data.categories);
       setActiveCategory(data.activeCategory);
+      setJudgeScores(data.judgeScores ?? { J1: null, J2: null, J3: null });
+      setIsLocked(data.isLocked ?? false);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -66,6 +75,17 @@ function LiveControlInner() {
 
   useEffect(() => {
     fetchLive();
+  }, [fetchLive]);
+
+  // Poll every 2 seconds for judge score updates
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      fetchLive();
+    }, 2000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [fetchLive]);
 
   const updateLive = async (patch: Partial<LiveState>) => {
@@ -107,6 +127,20 @@ function LiveControlInner() {
 
   const handleSelectAthlete = (index: number) => {
     updateLive({ activeAthleteIndex: index });
+  };
+
+  const handleToggleLock = () => {
+    updateLive({ lock: !isLocked } as unknown as Partial<LiveState>);
+  };
+
+  const handleRerun = async () => {
+    if (rerunning) return;
+    setRerunning(true);
+    try {
+      await updateLive({ rerun: true } as unknown as Partial<LiveState>);
+    } finally {
+      setRerunning(false);
+    }
   };
 
   if (loading) {
@@ -195,9 +229,110 @@ function LiveControlInner() {
               }}
             >
               #{currentAthlete.bib} — {currentAthlete.name}
+              {(liveState.activeAttemptNumber ?? 1) > 1 && (
+                <span style={{
+                  marginLeft: '0.75rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  background: '#f59e0b',
+                  color: '#fff',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 12,
+                  verticalAlign: 'middle',
+                }}>
+                  Attempt {liveState.activeAttemptNumber}
+                </span>
+              )}
             </div>
           ) : (
             <div style={{ color: '#6b7280', marginBottom: '0.75rem' }}>No athletes in this category.</div>
+          )}
+
+          {/* Judge score tiles */}
+          {currentAthlete && (
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+              {(['J1', 'J2', 'J3'] as const).map((role) => {
+                const score = judgeScores[role];
+                const submitted = score !== null;
+                return (
+                  <div
+                    key={role}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      borderRadius: 6,
+                      border: `2px solid ${submitted ? '#16a34a' : '#d1d5db'}`,
+                      backgroundColor: submitted ? '#f0fdf4' : '#f9fafb',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>
+                      {role}
+                    </div>
+                    <div style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 700,
+                      color: submitted ? '#16a34a' : '#d1d5db',
+                    }}>
+                      {submitted ? score : '—'}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      marginTop: '0.25rem',
+                      color: submitted ? '#16a34a' : '#9ca3af',
+                      fontWeight: 500,
+                    }}>
+                      {submitted ? '✓ Submitted' : 'Pending'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Lock / Unlock toggle */}
+          {currentAthlete && (
+            <button
+              onClick={handleToggleLock}
+              style={{
+                width: '100%',
+                padding: '0.6rem 1rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                border: '2px solid',
+                borderColor: isLocked ? '#dc2626' : '#16a34a',
+                backgroundColor: isLocked ? '#fef2f2' : '#f0fdf4',
+                color: isLocked ? '#dc2626' : '#16a34a',
+                borderRadius: 6,
+                cursor: 'pointer',
+                marginBottom: '1rem',
+              }}
+            >
+              {isLocked ? '🔒 Locked — Click to Unlock' : '🔓 Unlocked — Click to Lock'}
+            </button>
+          )}
+
+          {/* Re-run button */}
+          {currentAthlete && (
+            <button
+              onClick={handleRerun}
+              disabled={rerunning}
+              style={{
+                width: '100%',
+                padding: '0.6rem 1rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                border: '2px solid #f59e0b',
+                backgroundColor: '#fffbeb',
+                color: '#b45309',
+                borderRadius: 6,
+                cursor: rerunning ? 'not-allowed' : 'pointer',
+                opacity: rerunning ? 0.5 : 1,
+                marginBottom: '1rem',
+              }}
+            >
+              {rerunning ? '🔄 Re-running…' : '🔄 Re-run (New Attempt)'}
+            </button>
           )}
 
           {/* Prev / Next */}
