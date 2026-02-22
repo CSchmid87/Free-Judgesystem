@@ -248,8 +248,13 @@ function ResultsInner() {
       )}
 
       {/* No category selected */}
-      {!selectedCategoryId && (
+      {!selectedCategoryId && categories.length > 0 && (
         <p style={{ color: '#6b7280' }}>Select a category to view the leaderboard.</p>
+      )}
+
+      {/* No categories exist at all */}
+      {!loading && categories.length === 0 && (
+        <p style={{ color: '#6b7280' }}>No categories available. Add categories in the Admin Dashboard first.</p>
       )}
     </main>
   );

@@ -98,7 +98,15 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'No event found' }, { status: 404 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
 
   const currentLive: LiveState = event.liveState ?? {
     activeCategoryId: null,
@@ -117,7 +125,7 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    updated.activeCategoryId = body.activeCategoryId;
+    updated.activeCategoryId = body.activeCategoryId as string | null;
 
     // Reset athlete index when category changes
     if (body.activeCategoryId !== currentLive.activeCategoryId) {
@@ -133,7 +141,7 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    updated.activeRun = body.activeRun;
+    updated.activeRun = body.activeRun as 1 | 2;
     // Reset attempt when run changes
     if (body.activeRun !== currentLive.activeRun) {
       updated.activeAttemptNumber = 1;
@@ -147,7 +155,7 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    updated.activeAthleteIndex = body.activeAthleteIndex;
+    updated.activeAthleteIndex = body.activeAthleteIndex as number;
   }
 
   // Clamp activeAthleteIndex to valid range

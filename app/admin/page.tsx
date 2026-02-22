@@ -42,15 +42,26 @@ export default function AdminPage() {
     return new URLSearchParams(window.location.search).get('key') ?? '';
   }
 
+  const [noEvent, setNoEvent] = useState(false);
+  const [authError, setAuthError] = useState(false);
+
   const loadCategories = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/categories?key=${encodeURIComponent(getKey())}`);
+      if (res.status === 401) {
+        setAuthError(true);
+        return;
+      }
+      if (res.status === 404) {
+        setNoEvent(true);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setCategories(data.categories);
       }
     } catch {
-      // ignore
+      setError('Failed to connect to the server.');
     } finally {
       setLoading(false);
     }
@@ -133,9 +144,11 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setAthletes(data.athletes);
+      } else {
+        setAthleteError('Failed to load athletes.');
       }
     } catch {
-      // ignore
+      setAthleteError('Failed to connect to the server.');
     } finally {
       setAthletesLoading(false);
     }
@@ -243,6 +256,18 @@ export default function AdminPage() {
     <div style={styles.container}>
       <h1 style={styles.heading}>Admin Dashboard</h1>
 
+      {authError && (
+        <div style={{ color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: 6, marginBottom: '1rem' }}>
+          ⚠️ Unauthorized. Please check your admin link.
+        </div>
+      )}
+
+      {noEvent && (
+        <div style={{ color: '#1e40af', background: '#eff6ff', padding: '1rem', borderRadius: 6, marginBottom: '1rem' }}>
+          No event created yet. <a href="/admin/create" style={{ color: '#2563eb', textDecoration: 'underline' }}>Create one →</a>
+        </div>
+      )}
+
       <section style={styles.section}>
         <h2 style={styles.subheading}>
           Categories
@@ -250,7 +275,7 @@ export default function AdminPage() {
 
         {loading ? (
           <p>Loading…</p>
-        ) : categories.length === 0 ? (
+        ) : authError || noEvent ? null : categories.length === 0 ? (
           <p style={styles.muted}>No categories yet. Add one below.</p>
         ) : (
           <table style={styles.table}>
