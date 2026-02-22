@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         errors.push(`scores[${i}]: must be an object`);
         continue;
       }
-      const sc = s as { judgeRole?: unknown; value?: unknown; run?: unknown };
+      const sc = s as { judgeRole?: unknown; value?: unknown; run?: unknown; attempt?: unknown; categoryId?: unknown; athleteBib?: unknown };
       if (!['J1', 'J2', 'J3'].includes(sc.judgeRole as string)) {
         errors.push(`scores[${i}]: invalid judgeRole "${sc.judgeRole}"`);
       }
@@ -112,6 +112,9 @@ export async function POST(request: NextRequest) {
       }
       if (sc.run !== 1 && sc.run !== 2) {
         errors.push(`scores[${i}]: run must be 1 or 2`);
+      }
+      if (typeof sc.attempt !== 'number' || !Number.isInteger(sc.attempt) || sc.attempt < 1) {
+        errors.push(`scores[${i}]: attempt must be a positive integer`);
       }
     }
   }
@@ -129,6 +132,27 @@ export async function POST(request: NextRequest) {
     const uniqueBibs = new Set(bibs);
     if (uniqueBibs.size !== bibs.length) {
       errors.push(`Category "${cat.name}": duplicate athlete bibs`);
+    }
+  }
+
+  // Validate score references point to existing categories/athletes
+  const catBibMap = new Map<string, Set<number>>();
+  for (const cat of merged.categories) {
+    catBibMap.set(cat.id, new Set(cat.athletes.map((a) => a.bib)));
+  }
+  if (Array.isArray(merged.scores)) {
+    for (let i = 0; i < merged.scores.length; i++) {
+      const sc = merged.scores[i];
+      if (!sc || typeof sc !== 'object') continue;
+      const { categoryId, athleteBib } = sc as { categoryId?: string; athleteBib?: number };
+      if (typeof categoryId === 'string' && !catBibMap.has(categoryId)) {
+        errors.push(`scores[${i}]: categoryId "${categoryId}" does not match any category`);
+      } else if (typeof categoryId === 'string' && typeof athleteBib === 'number') {
+        const bibs = catBibMap.get(categoryId);
+        if (bibs && !bibs.has(athleteBib)) {
+          errors.push(`scores[${i}]: athleteBib ${athleteBib} not found in category "${categoryId}"`);
+        }
+      }
     }
   }
 
