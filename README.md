@@ -99,6 +99,7 @@ On Windows, allow Node.js through Windows Defender Firewall (inbound TCP on your
 - [ ] Add athletes to each category (manual or CSV import)
 - [ ] Distribute judge URLs to J1, J2, J3
 - [ ] Verify each judge can load their page and sees "Waiting for active rider"
+- [ ] **Dry-run test**: score one dummy athlete through Run 1 & 2, check results, then delete the category
 
 ### During the Event
 
@@ -116,8 +117,8 @@ On Windows, allow Node.js through Windows Defender Firewall (inbound TCP on your
 
 ### After the Event
 
-- [ ] **Export a backup**: `GET /api/export/json?key=<adminKey>` → save the JSON file
-- [ ] **Export CSV results**: `GET /api/export/csv?key=<adminKey>` → download for spreadsheets
+- [ ] **Export a backup**: open `http://<LAN-IP>:<PORT>/api/export/json?key=<adminKey>` in your browser → save the JSON file
+- [ ] **Export CSV results**: open `http://<LAN-IP>:<PORT>/api/export/csv?key=<adminKey>` in your browser → download for spreadsheets
 - [ ] Archive the `data/event.json` file as an additional backup
 
 ---
@@ -143,9 +144,9 @@ If a rider needs a re-run (e.g. interference), use the **🔄 Re-run** button in
 
 ### Import / Export
 
-- **JSON export** (full backup, no secrets): `GET /api/export/json?key=<adminKey>`
-- **JSON import** (restore from backup): `POST /api/export/json?key=<adminKey>` with the JSON as body
-- **CSV export** (results for spreadsheets): `GET /api/export/csv?key=<adminKey>`
+- **JSON export** (full backup, no secrets): open `http://<LAN-IP>:<PORT>/api/export/json?key=<adminKey>` in your browser
+- **JSON import** (restore from backup): `POST /api/export/json?key=<adminKey>` with the JSON as request body (use `curl` or a REST client)
+- **CSV export** (results for spreadsheets): open `http://<LAN-IP>:<PORT>/api/export/csv?key=<adminKey>` in your browser
 
 ---
 
