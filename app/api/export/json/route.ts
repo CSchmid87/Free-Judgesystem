@@ -77,11 +77,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  /* ── Merge: keep current secret keys ────────────────────────────────── */
-  const merged = {
-    ...(body as Record<string, unknown>),
+  /* ── Merge: keep current secret keys, default optional fields ─────── */
+  const raw = body as Record<string, unknown>;
+  const merged: Record<string, unknown> = {
+    ...raw,
     adminKey: currentEvent.adminKey,
     judgeKeys: currentEvent.judgeKeys,
+    categories: raw.categories ?? [],
+    scores: raw.scores ?? [],
+    lockedRuns: raw.lockedRuns ?? [],
+    liveState: raw.liveState ?? {
+      activeCategoryId: null,
+      activeRun: 1,
+      activeAthleteIndex: 0,
+      activeAttemptNumber: 1,
+    },
   };
 
   /* ── Validate full structure ────────────────────────────────────────── */
