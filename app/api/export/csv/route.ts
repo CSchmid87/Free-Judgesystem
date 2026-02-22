@@ -80,14 +80,23 @@ export async function GET(request: NextRequest) {
       const bestRun = detail?.bestRun;
       const score = entry.total;
 
+      // Detect ties (same rank as another athlete)
+      const isTied =
+        entry.total !== null &&
+        ranked.some(
+          (other) =>
+            other.athleteBib !== entry.athleteBib &&
+            other.rank === entry.rank,
+        );
+
       lines.push(
         csvRow([
-          String(entry.rank),
+          String(entry.rank) + (isTied ? 'T' : ''),
           String(entry.athleteBib),
           entry.athleteName,
           run1 !== null && run1 !== undefined ? run1.toFixed(2) : '',
           run2 !== null && run2 !== undefined ? run2.toFixed(2) : '',
-          bestRun !== null && bestRun !== undefined ? String(bestRun) : '',
+          bestRun !== null && bestRun !== undefined ? `Run ${bestRun}` : '',
           score !== null && score !== undefined ? score.toFixed(2) : '',
         ]),
       );
