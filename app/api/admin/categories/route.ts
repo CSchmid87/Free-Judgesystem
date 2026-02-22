@@ -37,7 +37,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No event found' }, { status: 404 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
 
   if (!name) {
@@ -93,7 +98,18 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Category not found' }, { status: 404 });
   }
 
-  const updated = updateEvent({ categories: filtered });
+  // If the deleted category is the active live category, reset live state
+  const patchData: { categories: Category[]; liveState?: typeof event.liveState } = { categories: filtered };
+  if (event.liveState?.activeCategoryId === categoryId) {
+    patchData.liveState = {
+      ...event.liveState,
+      activeCategoryId: null,
+      activeAthleteIndex: 0,
+      activeAttemptNumber: 1,
+    };
+  }
+
+  const updated = updateEvent(patchData);
   return NextResponse.json({ categories: updated.categories });
 }
 
@@ -112,7 +128,12 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'No event found' }, { status: 404 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const id = typeof body?.id === 'string' ? body.id : '';
   if (!id) {
     return NextResponse.json({ error: 'Category id is required' }, { status: 400 });

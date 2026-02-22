@@ -167,18 +167,22 @@ function LiveControlInner() {
       {/* Category selector */}
       <section style={{ marginBottom: '1.5rem' }}>
         <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Active Category</label>
-        <select
-          value={liveState.activeCategoryId ?? ''}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', fontSize: '1rem', borderRadius: 4, border: '1px solid #ccc' }}
-        >
-          <option value="">— none —</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({c.athleteCount} athletes)
-            </option>
-          ))}
-        </select>
+        {categories.length === 0 ? (
+          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>No categories available. Add categories in the Admin Dashboard first.</p>
+        ) : (
+          <select
+            value={liveState.activeCategoryId ?? ''}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem', fontSize: '1rem', borderRadius: 4, border: '1px solid #ccc' }}
+          >
+            <option value="">— none —</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.athleteCount} athletes)
+              </option>
+            ))}
+          </select>
+        )}
       </section>
 
       {/* Run selector */}
@@ -396,6 +400,10 @@ function LiveControlInner() {
 
       {!activeCategory && liveState.activeCategoryId && (
         <p style={{ color: '#b91c1c' }}>Selected category not found. It may have been deleted.</p>
+      )}
+
+      {!activeCategory && !liveState.activeCategoryId && categories.length > 0 && (
+        <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Select a category above to start managing the live event.</p>
       )}
     </main>
   );
