@@ -27,14 +27,15 @@
 | US-A17 | README rewrite — LAN setup, checklist, troubleshooting | #38 | ✅ Merged |
 | US-B01 | Judges see their own live leaderboard | #70 | ✅ Merged |
 | US-B02 | Head Judge overall and per-judge leaderboards | #71 | ✅ Merged |
+| US-REF-00 | Codebase Health Baseline | #74 | ✅ Merged |
 
 ## In Progress
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| US-REF-00 | Codebase Health Baseline | feature/US-REF-00 | PR pending — review + test passed |
+| — | — | — | — |
 
-### US-REF-00 Summary
+### US-REF-00 Summary (merged via #74)
 
 **Consolidated:**
 - Eliminated duplicated interfaces across 4 client pages → shared `lib/client-types.ts`
