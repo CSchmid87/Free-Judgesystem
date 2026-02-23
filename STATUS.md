@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-02-22
+> Last updated: 2026-02-23
 
 ## Merged to `main`
 
@@ -25,12 +25,13 @@
 | US-A15 | Empty states and null handling | #34 | ✅ Merged |
 | US-A16 | JSON export/import with validation | #36 | ✅ Merged |
 | US-A17 | README rewrite — LAN setup, checklist, troubleshooting | #38 | ✅ Merged |
+| US-B01 | Judges see their own live leaderboard | #70 | ✅ Merged |
 
 ## In Progress
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| — | Judge page UI (full scoring form) | `feature/US-A17` (uncommitted) | Built but not committed to its own branch yet |
+| — | — | — | No stories in progress |
 
 ## Backlog / Ideas
 
