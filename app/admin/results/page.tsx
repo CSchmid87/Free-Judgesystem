@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface CategorySummary {
   id: string;
@@ -36,6 +38,19 @@ interface RankedAthlete {
   categoryScores: CategoryScoreDetail[];
 }
 
+type ViewMode = 'overall' | 'J1' | 'J2' | 'J3';
+
+const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+  { value: 'overall', label: 'Overall' },
+  { value: 'J1', label: 'J1' },
+  { value: 'J2', label: 'J2' },
+  { value: 'J3', label: 'J3' },
+];
+
+const POLL_INTERVAL = 2000;
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function ResultsPage() {
   return (
     <Suspense fallback={<main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}><p>Loading…</p></main>}>
@@ -51,10 +66,42 @@ function ResultsInner() {
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [leaderboard, setLeaderboard] = useState<RankedAthlete[] | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('overall');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Fetch categories on mount
+  // Refs for polling to always read latest state without re-creating the callback
+  const selectedCategoryRef = useRef(selectedCategoryId);
+  selectedCategoryRef.current = selectedCategoryId;
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
+  // ── Fetch leaderboard ──────────────────────────────────────────────────────
+
+  const fetchLeaderboard = useCallback(async () => {
+    const catId = selectedCategoryRef.current;
+    if (!catId) return;
+
+    const mode = viewModeRef.current;
+    let url = `/api/admin/results?key=${encodeURIComponent(key)}&categoryId=${encodeURIComponent(catId)}`;
+    if (mode !== 'overall') {
+      url += `&judge=${encodeURIComponent(mode)}`;
+    }
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to load leaderboard');
+      const data = await res.json();
+      setLeaderboard(data.leaderboard ?? []);
+      if (data.categories) setCategories(data.categories);
+      setError('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    }
+  }, [key]);
+
+  // ── Initial categories fetch ───────────────────────────────────────────────
+
   useEffect(() => {
     (async () => {
       try {
@@ -70,28 +117,30 @@ function ResultsInner() {
     })();
   }, [key]);
 
-  // Fetch leaderboard when category changes
-  const fetchLeaderboard = useCallback(async (catId: string) => {
-    if (!catId) {
-      setLeaderboard(null);
-      return;
-    }
-    try {
-      const res = await fetch(
-        `/api/admin/results?key=${encodeURIComponent(key)}&categoryId=${encodeURIComponent(catId)}`,
-      );
-      if (!res.ok) throw new Error('Failed to load leaderboard');
-      const data = await res.json();
-      setLeaderboard(data.leaderboard ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
-    }
-  }, [key]);
+  // ── Polling for live updates ───────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!selectedCategoryId) return;
+
+    // Fetch immediately when category or view mode changes
+    fetchLeaderboard();
+
+    const id = setInterval(fetchLeaderboard, POLL_INTERVAL);
+    return () => clearInterval(id);
+  }, [selectedCategoryId, viewMode, fetchLeaderboard]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleCategoryChange = (catId: string) => {
     setSelectedCategoryId(catId);
-    fetchLeaderboard(catId);
+    if (!catId) setLeaderboard(null);
   };
+
+  const handleViewChange = (mode: ViewMode) => {
+    setViewMode(mode);
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -101,7 +150,7 @@ function ResultsInner() {
     );
   }
 
-  if (error) {
+  if (error && categories.length === 0) {
     return (
       <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
         <p style={{ color: '#dc2626' }}>{error}</p>
@@ -116,7 +165,7 @@ function ResultsInner() {
       </h1>
 
       {/* Category selector */}
-      <section style={{ marginBottom: '1.5rem' }}>
+      <section style={{ marginBottom: '1rem' }}>
         <label
           htmlFor="category-select"
           style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}
@@ -143,6 +192,55 @@ function ResultsInner() {
           ))}
         </select>
       </section>
+
+      {/* View switcher: Overall / J1 / J2 / J3 */}
+      {selectedCategoryId && (
+        <section style={{ marginBottom: '1.5rem' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              borderRadius: 6,
+              overflow: 'hidden',
+              border: '1px solid #d1d5db',
+            }}
+          >
+            {VIEW_OPTIONS.map((opt) => {
+              const isActive = viewMode === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => handleViewChange(opt.value)}
+                  style={{
+                    padding: '0.45rem 1rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    borderRight: '1px solid #d1d5db',
+                    cursor: 'pointer',
+                    background: isActive ? '#2563eb' : '#fff',
+                    color: isActive ? '#fff' : '#374151',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <span
+            style={{
+              marginLeft: '0.75rem',
+              fontSize: '0.8rem',
+              color: '#9ca3af',
+            }}
+          >
+            ● Auto-refreshing
+          </span>
+        </section>
+      )}
+
+      {error && (
+        <p style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</p>
+      )}
 
       {/* Leaderboard table */}
       {leaderboard && leaderboard.length > 0 && (
@@ -186,7 +284,7 @@ function ResultsInner() {
                   >
                     {/* Rank — show "T" suffix for ties */}
                     <td style={{ ...tdStyle, fontWeight: 700, textAlign: 'center' }}>
-                      {entry.rank}{isTied ? 'T' : ''}
+                      {entry.total !== null ? `${entry.rank}${isTied ? 'T' : ''}` : '—'}
                     </td>
                     <td style={tdStyle}>{entry.athleteBib}</td>
                     <td style={tdStyle}>
@@ -242,9 +340,13 @@ function ResultsInner() {
         </section>
       )}
 
-      {/* Empty state: category selected but no athletes */}
+      {/* Empty state: category selected but no scores */}
       {leaderboard && leaderboard.length === 0 && (
-        <p style={{ color: '#6b7280' }}>No athletes or scores in this category yet.</p>
+        <p style={{ color: '#6b7280' }}>
+          {viewMode !== 'overall'
+            ? `No scores from ${viewMode} for this category.`
+            : 'No athletes or scores in this category yet.'}
+        </p>
       )}
 
       {/* No category selected */}
@@ -259,6 +361,8 @@ function ResultsInner() {
     </main>
   );
 }
+
+// ─── Shared styles ───────────────────────────────────────────────────────────
 
 const thStyle: React.CSSProperties = {
   padding: '0.6rem 0.75rem',
