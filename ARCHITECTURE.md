@@ -76,12 +76,14 @@ app/
     results/page.tsx         — leaderboard with dense ranking
 
   judge/
-    page.tsx                 — judge scoring UI (polls /api/state, submits to /api/score)
+    page.tsx                 — judge scoring + personal leaderboard
+                               (polls /api/state, /api/score, /api/score/leaderboard)
 
   api/
     event/route.ts           — GET: public event info (no secrets)
     state/route.ts           — GET: public live state (category, run, athlete)
     score/route.ts           — GET: own score | POST: submit score (judge key)
+    score/leaderboard/route.ts — GET: judge-specific leaderboard (judge key)
     auth/validate/route.ts   — GET: internal key validation for middleware
 
     admin/
