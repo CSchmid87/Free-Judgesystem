@@ -2,29 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-
-interface CategorySummary {
-  id: string;
-  name: string;
-  athleteCount: number;
-}
-
-interface Athlete {
-  bib: number;
-  name: string;
-}
+import type { CategorySummary, ClientAthlete } from '@/lib/client-types';
+import type { LiveState, LiveUpdatePayload } from '@/lib/types';
+import { DEFAULT_LIVE_STATE } from '@/lib/types';
 
 interface ActiveCategory {
   id: string;
   name: string;
-  athletes: Athlete[];
-}
-
-interface LiveState {
-  activeCategoryId: string | null;
-  activeRun: 1 | 2;
-  activeAthleteIndex: number;
-  activeAttemptNumber: number;
+  athletes: ClientAthlete[];
 }
 
 type JudgeScores = Record<string, number | null>;
@@ -43,12 +28,7 @@ function LiveControlInner() {
 
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [activeCategory, setActiveCategory] = useState<ActiveCategory | null>(null);
-  const [liveState, setLiveState] = useState<LiveState>({
-    activeCategoryId: null,
-    activeRun: 1,
-    activeAthleteIndex: 0,
-    activeAttemptNumber: 1,
-  });
+  const [liveState, setLiveState] = useState<LiveState>({ ...DEFAULT_LIVE_STATE });
   const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
   const [isLocked, setIsLocked] = useState(false);
   const [rerunning, setRerunning] = useState(false);
@@ -88,7 +68,7 @@ function LiveControlInner() {
     };
   }, [fetchLive]);
 
-  const updateLive = async (patch: Partial<LiveState>) => {
+  const updateLive = async (patch: LiveUpdatePayload) => {
     try {
       const res = await fetch(`/api/admin/live?key=${encodeURIComponent(key)}`, {
         method: 'PUT',
@@ -130,14 +110,14 @@ function LiveControlInner() {
   };
 
   const handleToggleLock = () => {
-    updateLive({ lock: !isLocked } as unknown as Partial<LiveState>);
+    updateLive({ lock: !isLocked });
   };
 
   const handleRerun = async () => {
     if (rerunning) return;
     setRerunning(true);
     try {
-      await updateLive({ rerun: true } as unknown as Partial<LiveState>);
+      await updateLive({ rerun: true });
     } finally {
       setRerunning(false);
     }
@@ -212,11 +192,11 @@ function LiveControlInner() {
         </div>
       </section>
 
-      {/* Active rider display */}
+      {/* Active athlete display */}
       {activeCategory && (
         <section style={{ marginBottom: '1.5rem' }}>
           <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
-            Active Rider {athletes.length > 0 ? `(${liveState.activeAthleteIndex + 1} / ${athletes.length})` : '(0 / 0)'}
+            Active Athlete {athletes.length > 0 ? `(${liveState.activeAthleteIndex + 1} / ${athletes.length})` : '(0 / 0)'}
           </label>
 
           {currentAthlete ? (
@@ -374,7 +354,7 @@ function LiveControlInner() {
           </div>
 
           {/* Athlete list */}
-          <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Rider List</label>
+          <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Athlete List</label>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {athletes.map((a, idx) => (
               <li

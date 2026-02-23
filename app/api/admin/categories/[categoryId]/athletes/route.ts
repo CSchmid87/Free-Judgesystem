@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
+import type { RouteContext } from '@/lib/types';
 
-type RouteContext = { params: Promise<{ categoryId: string }> };
+type AthleteRouteContext = RouteContext<{ categoryId: string }>;
 
 /**
  * GET /api/admin/categories/[categoryId]/athletes?key=...
  * List athletes for a category, sorted by bib ascending.
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: AthleteRouteContext) {
   const key = request.nextUrl.searchParams.get('key');
   if (!validateAdminKey(key)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * Add an athlete. Body: { bib: number, name: string }
  * Enforces unique bib within the category.
  */
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: AthleteRouteContext) {
   const key = request.nextUrl.searchParams.get('key');
   if (!validateAdminKey(key)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
  * DELETE /api/admin/categories/[categoryId]/athletes?key=...&bib=...
  * Remove an athlete by bib number.
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: AthleteRouteContext) {
   const key = request.nextUrl.searchParams.get('key');
   if (!validateAdminKey(key)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -2,41 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface CategorySummary {
-  id: string;
-  name: string;
-  athleteCount: number;
-}
-
-interface RunScoreResult {
-  complete: boolean;
-  average: number | null;
-  attempt: number;
-  scores: Record<string, number | null>;
-}
-
-interface CategoryScoreDetail {
-  categoryId: string;
-  categoryName: string;
-  bestRun: 1 | 2 | null;
-  bestAverage: number | null;
-  bestAttempt: number | null;
-  complete: boolean;
-  run1: RunScoreResult | null;
-  run2: RunScoreResult | null;
-}
-
-interface RankedAthlete {
-  rank: number;
-  athleteBib: number;
-  athleteName: string;
-  complete: boolean;
-  total: number | null;
-  categoryScores: CategoryScoreDetail[];
-}
+import type { RankedAthlete, CategorySummary } from '@/lib/client-types';
+import { thStyle, tdStyle } from '@/lib/client-types';
 
 type ViewMode = 'overall' | 'J1' | 'J2' | 'J3';
 
@@ -204,8 +171,9 @@ function ResultsInner() {
               border: '1px solid #d1d5db',
             }}
           >
-            {VIEW_OPTIONS.map((opt) => {
+            {VIEW_OPTIONS.map((opt, i) => {
               const isActive = viewMode === opt.value;
+              const isLast = i === VIEW_OPTIONS.length - 1;
               return (
                 <button
                   key={opt.value}
@@ -215,7 +183,7 @@ function ResultsInner() {
                     fontSize: '0.9rem',
                     fontWeight: 600,
                     border: 'none',
-                    borderRight: '1px solid #d1d5db',
+                    borderRight: isLast ? 'none' : '1px solid #d1d5db',
                     cursor: 'pointer',
                     background: isActive ? '#2563eb' : '#fff',
                     color: isActive ? '#fff' : '#374151',
@@ -289,7 +257,7 @@ function ResultsInner() {
                     <td style={tdStyle}>{entry.athleteBib}</td>
                     <td style={tdStyle}>
                       {entry.athleteName}
-                      {!entry.complete && entry.total !== null && (
+                      {viewMode === 'overall' && !entry.complete && entry.total !== null && (
                         <span
                           style={{
                             marginLeft: '0.5rem',
@@ -362,16 +330,4 @@ function ResultsInner() {
   );
 }
 
-// ─── Shared styles ───────────────────────────────────────────────────────────
-
-const thStyle: React.CSSProperties = {
-  padding: '0.6rem 0.75rem',
-  textAlign: 'center',
-  fontWeight: 700,
-  color: '#374151',
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '0.6rem 0.75rem',
-  textAlign: 'left',
-};
+// Table styles imported from @/lib/client-types

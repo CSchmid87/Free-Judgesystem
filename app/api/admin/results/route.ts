@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadEvent } from '@/lib/store';
-import { validateAdminKey } from '@/lib/auth';
 import { rankAthletes } from '@/lib/scoring';
 import { JUDGE_ROLES } from '@/lib/types';
-import type { JudgeRole } from '@/lib/types';
+import type { JudgeRole, EventData } from '@/lib/types';
+import { withAdminAuth } from '@/lib/admin-handler';
 
 /**
  * GET /api/admin/results?key=…&categoryId=…[&judge=J1|J2|J3]
@@ -15,17 +14,7 @@ import type { JudgeRole } from '@/lib/types';
  * per-judge leaderboard (US-B02). When omitted the overall leaderboard
  * (all judges) is returned.
  */
-export async function GET(request: NextRequest) {
-  const key = request.nextUrl.searchParams.get('key');
-  if (!validateAdminKey(key)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const event = loadEvent();
-  if (!event) {
-    return NextResponse.json({ error: 'No event found' }, { status: 404 });
-  }
-
+export const GET = withAdminAuth(async (request: NextRequest, event: EventData) => {
   const categorySummaries = event.categories.map((c) => ({
     id: c.id,
     name: c.name,
@@ -63,9 +52,11 @@ export async function GET(request: NextRequest) {
   // Rank athletes within this category
   const ranked = rankAthletes(scores, [category], category.athletes);
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     categories: categorySummaries,
     leaderboard: ranked,
     judge: judgeFilter,
   });
-}
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+});

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
+import { DEFAULT_LIVE_STATE } from '@/lib/types';
 import type { Category } from '@/lib/types';
 
 /**
@@ -103,9 +104,7 @@ export async function DELETE(request: NextRequest) {
   if (event.liveState?.activeCategoryId === categoryId) {
     patchData.liveState = {
       ...event.liveState,
-      activeCategoryId: null,
-      activeAthleteIndex: 0,
-      activeAttemptNumber: 1,
+      ...DEFAULT_LIVE_STATE,
     };
   }
 

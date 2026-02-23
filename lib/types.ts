@@ -74,6 +74,33 @@ export interface LiveState {
 }
 
 /**
+ * Default LiveState used when creating a new event or resetting state.
+ * Single source of truth — import this instead of hardcoding the shape.
+ */
+export const DEFAULT_LIVE_STATE: LiveState = {
+  activeCategoryId: null,
+  activeRun: 1,
+  activeAthleteIndex: 0,
+  activeAttemptNumber: 1,
+};
+
+/**
+ * Payload accepted by PUT /api/admin/live.
+ * Extends Partial<LiveState> with control fields for lock/unlock and re-run.
+ */
+export interface LiveUpdatePayload extends Partial<LiveState> {
+  lock?: boolean;
+  rerun?: boolean;
+}
+
+/**
+ * Shared route context type for dynamic route segments (Next.js App Router).
+ */
+export type RouteContext<T extends Record<string, string> = Record<string, string>> = {
+  params: Promise<T>;
+};
+
+/**
  * EventData represents a persistent event record.
  *
  * @property id         - Unique identifier (non-empty string)

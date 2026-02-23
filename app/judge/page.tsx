@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import type { RankedAthlete } from '@/lib/client-types';
+import { thStyle as _thStyle, tdStyle as _tdStyle } from '@/lib/client-types';
 
-// ─── Types (mirrored from API response shapes) ──────────────────────────────
+// Judge page uses tighter padding than the results page
+const thStyle: React.CSSProperties = { ..._thStyle, padding: '0.5rem 0.6rem' };
+const tdStyle: React.CSSProperties = { ..._tdStyle, padding: '0.5rem 0.6rem' };
 
 interface LiveState {
   event: string | null;
@@ -12,21 +16,6 @@ interface LiveState {
   athlete: { bib: number; name: string } | null;
   athleteIndex: number;
   athleteCount: number;
-}
-
-interface RankedAthlete {
-  rank: number;
-  athleteBib: number;
-  athleteName: string;
-  total: number | null;
-  categoryScores: {
-    categoryId: string;
-    categoryName: string;
-    bestRun: 1 | 2 | null;
-    bestAverage: number | null;
-    run1: { average: number | null } | null;
-    run2: { average: number | null } | null;
-  }[];
 }
 
 interface LeaderboardResponse {
@@ -300,7 +289,7 @@ function JudgeInner() {
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                 <th style={thStyle}>Rank</th>
                 <th style={{ ...thStyle, textAlign: 'left' }}>Bib</th>
-                <th style={{ ...thStyle, textAlign: 'left' }}>Rider</th>
+                <th style={{ ...thStyle, textAlign: 'left' }}>Athlete</th>
                 <th style={thStyle}>Score</th>
               </tr>
             </thead>
@@ -354,16 +343,4 @@ function JudgeInner() {
   );
 }
 
-// ─── Shared styles ───────────────────────────────────────────────────────────
-
-const thStyle: React.CSSProperties = {
-  padding: '0.5rem 0.6rem',
-  textAlign: 'center',
-  fontWeight: 700,
-  color: '#374151',
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '0.5rem 0.6rem',
-  textAlign: 'left',
-};
+// Table styles imported from @/lib/client-types

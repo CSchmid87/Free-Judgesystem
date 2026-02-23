@@ -271,7 +271,7 @@ export function rankAthletes(
   // Sort scored descending by total
   scored.sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
 
-  // Assign dense ranks
+  // Assign standard competition ranks (1,1,3 — not dense 1,1,2)
   const ranked: RankedAthlete[] = [];
   let currentRank = 1;
 
