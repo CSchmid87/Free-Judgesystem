@@ -60,9 +60,14 @@ middleware.ts                 — guards /admin/* (admin key) and /judge (judge 
 
 lib/
   types.ts                   — all interfaces + type guards (isEventData, etc.)
+                               also: DEFAULT_LIVE_STATE, LiveUpdatePayload, RouteContext
   store.ts                   — loadEvent / saveEvent / updateEvent (atomic rename)
   auth.ts                    — generateKey / validateAdminKey / validateJudgeKey
   scoring.ts                 — computeRunScore / computeFinalScore / rankAthletes
+  client-types.ts            — shared client-side types (CategorySummary, ClientAthlete,
+                               thStyle/tdStyle) + re-exports from scoring.ts
+  admin-handler.ts           — withAdminAuth(handler) — shared admin key + event
+                               validation wrapper for API routes
 
 app/
   layout.tsx                 — root layout (html, body)
@@ -71,7 +76,7 @@ app/
   admin/
     page.tsx                 — admin dashboard (categories + athletes CRUD)
     create/page.tsx          — event creation form, copy-to-clipboard for keys
-    live/page.tsx            — live controls: category/run/rider selection,
+    live/page.tsx            — live controls: category/run/athlete selection,
                                judge score tiles, lock/unlock, re-run, prev/next
     results/page.tsx         — overall + per-judge leaderboards with view
                                switcher (Overall/J1/J2/J3), 2s polling
@@ -95,12 +100,18 @@ app/
         athletes/import/route.ts — POST: CSV bulk import
       live/route.ts          — GET/PUT: live state + lock/unlock + re-run
       results/route.ts       — GET: ranked leaderboard (optional ?judge=J1|J2|J3
-                               for per-judge filtering)
+                               for per-judge filtering). Uses withAdminAuth.
 
     export/
       csv/route.ts           — GET: CSV download (admin key)
       json/route.ts          — GET: JSON backup (secrets stripped)
                                POST: JSON import with validation
+
+__tests__/
+  scoring.test.ts            — 18 unit tests for computeRunScore / computeFinalScore /
+                               rankAthletes (ties, partial, multi-attempt, rounding)
+  auth-store.test.ts         — 13 unit tests for generateKey / validateAdminKey /
+                               validateJudgeKey / loadEvent / saveEvent / updateEvent
 ```
 
 ## Key Patterns
@@ -109,12 +120,25 @@ app/
 |---------|--------|
 | **Auth (admin)** | `validateAdminKey(key)` returns boolean |
 | **Auth (judge)** | `validateJudgeKey(key)` returns `"J1"│"J2"│"J3"│null` |
+| **Auth wrapper** | `withAdminAuth(handler)` eliminates per-route boilerplate |
 | **Page guards** | Middleware calls `/api/auth/validate` internally |
 | **Persistence** | `loadEvent()` → modify → `updateEvent(partial)` or `saveEvent(full)` |
 | **Atomic writes** | Write to temp file → `fs.renameSync()` (same filesystem) |
-| **Polling** | Client pages poll APIs every 2 s (`setInterval` + `fetch`) |
+| **Polling** | Client pages poll APIs every 2 s (`setInterval` + `fetch`). All polled endpoints set `Cache-Control: no-store`. |
 | **Score key** | `(categoryId, athleteBib, judgeRole, run, attempt)` — upsert |
 | **Lock key** | `"categoryId:run"` string in `lockedRuns[]` |
+| **Client types** | Client pages import from `lib/client-types.ts` — no local interface re-declarations |
+| **Live defaults** | `DEFAULT_LIVE_STATE` from `lib/types.ts` — single source of truth |
+
+## Testing
+
+| Command | Description |
+|---------|-------------|
+| `npm test` | Run all unit tests (Vitest, single run) |
+| `npm run test:watch` | Run tests in watch mode |
+
+Tests live in `__tests__/`. Vitest config is in `vitest.config.ts`.
+Coverage targets: `lib/scoring.ts` (18 tests), `lib/auth.ts` (6 tests), `lib/store.ts` (5 tests).
 
 ## Known Limitations
 

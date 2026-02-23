@@ -32,7 +32,7 @@
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| — | — | — | No stories in progress |
+| US-REF-00 | Codebase Health Baseline | feature/US-REF-00 | Consolidation + tests + cleanup |
 
 ## Backlog / Ideas
 

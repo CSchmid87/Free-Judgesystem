@@ -1,16 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-
-interface Athlete {
-  bib: number;
-  name: string;
-}
+import type { ClientAthlete } from '@/lib/client-types';
 
 interface Category {
   id: string;
   name: string;
-  athletes: Athlete[];
+  athletes: ClientAthlete[];
 }
 
 export default function AdminPage() {
@@ -23,7 +19,7 @@ export default function AdminPage() {
 
   // Athletes state
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [athletes, setAthletes] = useState<ClientAthlete[]>([]);
   const [athletesLoading, setAthletesLoading] = useState(false);
   const [newBib, setNewBib] = useState<number | ''>('');
   const [newAthleteName, setNewAthleteName] = useState('');

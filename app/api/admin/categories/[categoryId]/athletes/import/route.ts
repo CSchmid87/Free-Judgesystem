@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
-import type { Athlete } from '@/lib/types';
+import type { Athlete, RouteContext } from '@/lib/types';
 
-type RouteContext = { params: Promise<{ categoryId: string }> };
+type ImportRouteContext = RouteContext<{ categoryId: string }>;
 
 interface CsvError {
   line: number;
@@ -83,7 +83,7 @@ function parseCsv(raw: string): { athletes: { bib: number; name: string; _line: 
  *   - errors: parse errors with line numbers
  *   - athletes: full updated list
  */
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: ImportRouteContext) {
   const key = request.nextUrl.searchParams.get('key');
   if (!validateAdminKey(key)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

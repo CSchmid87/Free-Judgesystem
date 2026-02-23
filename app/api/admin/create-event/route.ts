@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { loadEvent, saveEvent } from '@/lib/store';
 import { generateKey, validateAdminKey } from '@/lib/auth';
+import { DEFAULT_LIVE_STATE } from '@/lib/types';
 import type { EventData } from '@/lib/types';
 
 /**
@@ -70,12 +71,7 @@ export async function POST(request: NextRequest) {
         J3: generateKey(),
       },
       categories: [],
-      liveState: {
-        activeCategoryId: null,
-        activeRun: 1,
-        activeAthleteIndex: 0,
-        activeAttemptNumber: 1,
-      },
+      liveState: { ...DEFAULT_LIVE_STATE },
       scores: [],
       lockedRuns: [],
     };
