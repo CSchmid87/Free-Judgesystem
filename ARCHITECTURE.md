@@ -73,7 +73,8 @@ app/
     create/page.tsx          — event creation form, copy-to-clipboard for keys
     live/page.tsx            — live controls: category/run/rider selection,
                                judge score tiles, lock/unlock, re-run, prev/next
-    results/page.tsx         — leaderboard with dense ranking
+    results/page.tsx         — overall + per-judge leaderboards with view
+                               switcher (Overall/J1/J2/J3), 2s polling
 
   judge/
     page.tsx                 — judge scoring + personal leaderboard
@@ -93,7 +94,8 @@ app/
         athletes/route.ts    — POST/DELETE: athlete CRUD
         athletes/import/route.ts — POST: CSV bulk import
       live/route.ts          — GET/PUT: live state + lock/unlock + re-run
-      results/route.ts       — GET: ranked leaderboard
+      results/route.ts       — GET: ranked leaderboard (optional ?judge=J1|J2|J3
+                               for per-judge filtering)
 
     export/
       csv/route.ts           — GET: CSV download (admin key)

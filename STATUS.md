@@ -26,6 +26,7 @@
 | US-A16 | JSON export/import with validation | #36 | ✅ Merged |
 | US-A17 | README rewrite — LAN setup, checklist, troubleshooting | #38 | ✅ Merged |
 | US-B01 | Judges see their own live leaderboard | #70 | ✅ Merged |
+| US-B02 | Head Judge overall and per-judge leaderboards | #71 | ✅ Merged |
 
 ## In Progress
 
