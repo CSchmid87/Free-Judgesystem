@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { RankedAthlete } from '@/lib/client-types';
-import { thStyle, tdStyle } from '@/lib/client-types';
+import { thStyle as _thStyle, tdStyle as _tdStyle } from '@/lib/client-types';
+
+// Judge page uses tighter padding than the results page
+const thStyle: React.CSSProperties = { ..._thStyle, padding: '0.5rem 0.6rem' };
+const tdStyle: React.CSSProperties = { ..._tdStyle, padding: '0.5rem 0.6rem' };
 
 interface LiveState {
   event: string | null;

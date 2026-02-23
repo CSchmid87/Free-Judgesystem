@@ -105,7 +105,6 @@ export async function DELETE(request: NextRequest) {
     patchData.liveState = {
       ...event.liveState,
       ...DEFAULT_LIVE_STATE,
-      activeCategoryId: null,
     };
   }
 

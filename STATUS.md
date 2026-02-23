@@ -32,10 +32,36 @@
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| US-REF-00 | Codebase Health Baseline | feature/US-REF-00 | Consolidation + tests + cleanup |
+| US-REF-00 | Codebase Health Baseline | feature/US-REF-00 | PR pending — review + test passed |
+
+### US-REF-00 Summary
+
+**Consolidated:**
+- Eliminated duplicated interfaces across 4 client pages → shared `lib/client-types.ts`
+- Removed all `as unknown as` type casts (live page lock/rerun calls)
+- Unified `LiveState` default values → `DEFAULT_LIVE_STATE` constant (single source of truth)
+- Shared table styles (`thStyle`/`tdStyle`) extracted; judge page overrides preserved
+- `RouteContext<T>` generic replaces per-route local type aliases
+
+**Patterns standardized:**
+- `withAdminAuth(handler)` wrapper for admin routes (applied to results route; pattern ready for remaining routes)
+- `LiveUpdatePayload` interface for type-safe live update calls
+- `Cache-Control: no-store` on results endpoint
+- "Rider" → "Athlete" naming across UI
+- Provisional badge hidden in per-judge view (was incorrectly shown)
+- Border overlap fix on results view switcher buttons
+
+**Test coverage added:**
+- Vitest 4.0 configured (`npm test` / `npm run test:watch`)
+- 18 scoring tests: `computeRunScore`, `computeFinalScore`, `rankAthletes` (ties, partial, multi-attempt, rounding, multi-category, stable sort)
+- 13 auth+store tests: `generateKey`, `validateAdminKey`, `validateJudgeKey`, `loadEvent`, `saveEvent`, `updateEvent`
+- 26-scenario manual regression script passed (event lifecycle, scoring, leaderboard, per-judge view, best-of-two-runs, re-run attempts, lock enforcement, exports)
+
+**Files changed:** 20 (4 new, 16 modified)
 
 ## Backlog / Ideas
 
+- Apply `withAdminAuth` wrapper to remaining 6 admin routes (categories, live, create-event, CSV export)
 - Public spectator live-score page (auto-updating)
 - QR code generation for judge URLs
 - Multi-event support

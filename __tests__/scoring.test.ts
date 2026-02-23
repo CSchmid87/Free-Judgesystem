@@ -198,7 +198,7 @@ describe('rankAthletes', () => {
     ]);
   });
 
-  it('T-S10: tied scores → same rank, dense ranking (1,1,2)', () => {
+  it('T-S10: tied scores → same rank, standard competition ranking (1,1,3)', () => {
     const scores: Score[] = [
       // Alice & Bob both score 80
       makeScore({ athleteBib: 1, judgeRole: 'J1', value: 80, run: 1 }),
