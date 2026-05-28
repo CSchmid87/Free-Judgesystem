@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
 import { JUDGE_ROLES } from '@/lib/types';
+import { computeFinalists } from '@/lib/scoring';
 import type { LiveState } from '@/lib/types';
 
 /**
@@ -27,9 +28,22 @@ export async function GET(request: NextRequest) {
   };
   const attempt = liveState.activeAttemptNumber ?? 1;
 
-  // Derive the active category & its athletes for the UI
-  const activeCategory = liveState.activeCategoryId
+  // Derive the active category & its athletes for the UI.
+  // When the organizer has configured a finals phase (numFinalists set) and
+  // the active run is 2 (finals), the displayed athletes are reduced to the
+  // finalist start list derived from the Run 1 (qualification) ranking.
+  const baseCategory = liveState.activeCategoryId
     ? event.categories.find((c) => c.id === liveState.activeCategoryId) ?? null
+    : null;
+
+  const displayedAthletes = baseCategory
+    ? (liveState.activeRun === 2
+        ? computeFinalists(event.scores ?? [], baseCategory)
+        : baseCategory.athletes)
+    : [];
+
+  const activeCategory = baseCategory
+    ? { ...baseCategory, athletes: displayedAthletes }
     : null;
 
   // Collect judge scores for the active athlete/run
@@ -158,10 +172,16 @@ export async function PUT(request: NextRequest) {
     updated.activeAthleteIndex = body.activeAthleteIndex as number;
   }
 
-  // Clamp activeAthleteIndex to valid range
+  // Clamp activeAthleteIndex to valid range. When in finals (Run 2) and
+  // numFinalists is configured, the valid range is the finalist count.
   if (updated.activeCategoryId) {
     const cat = event.categories.find((c) => c.id === updated.activeCategoryId);
-    const count = cat?.athletes.length ?? 0;
+    const athleteList = cat
+      ? (updated.activeRun === 2
+          ? computeFinalists(event.scores ?? [], cat)
+          : cat.athletes)
+      : [];
+    const count = athleteList.length;
     if (count === 0) {
       updated.activeAthleteIndex = 0;
     } else if (updated.activeAthleteIndex >= count) {

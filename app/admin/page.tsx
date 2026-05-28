@@ -7,6 +7,7 @@ interface Category {
   id: string;
   name: string;
   athletes: ClientAthlete[];
+  numFinalists?: number | null;
 }
 
 export default function AdminPage() {
@@ -14,6 +15,7 @@ export default function AdminPage() {
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editFinalists, setEditFinalists] = useState<number | ''>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -111,10 +113,16 @@ export default function AdminPage() {
     setError('');
     const key = getKey();
 
+    const body: { id: string; name: string; numFinalists: number | null } = {
+      id,
+      name: editName.trim(),
+      numFinalists: editFinalists === '' ? null : Number(editFinalists),
+    };
+
     const res = await fetch(`/api/admin/categories?key=${encodeURIComponent(key)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, name: editName.trim() }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
@@ -278,6 +286,7 @@ export default function AdminPage() {
             <thead>
               <tr>
                 <th style={styles.th}>Name</th>
+                <th style={{ ...styles.th, width: 110 }} title="Number of athletes that advance to Run 2 (finals). Leave empty for no finals phase.">Finalists</th>
                 <th style={{ ...styles.th, width: 140 }}>Actions</th>
               </tr>
             </thead>
@@ -292,6 +301,16 @@ export default function AdminPage() {
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           style={styles.inputSmall}
+                        />
+                      </td>
+                      <td style={styles.td}>
+                        <input
+                          type="number"
+                          min={0}
+                          value={editFinalists}
+                          onChange={(e) => setEditFinalists(e.target.value ? Number(e.target.value) : '')}
+                          placeholder="—"
+                          style={{ ...styles.inputSmall, width: 70 }}
                         />
                       </td>
                       <td style={styles.td}>
@@ -318,12 +337,18 @@ export default function AdminPage() {
                           ({(cat.athletes ?? []).length})
                         </span>
                       </td>
+                      <td style={{ ...styles.td, color: cat.numFinalists ? '#111' : '#9ca3af' }}>
+                        {cat.numFinalists && cat.numFinalists > 0 ? cat.numFinalists : '—'}
+                      </td>
                       <td style={styles.td}>
                         <button
                           style={styles.btnEdit}
                           onClick={() => {
                             setEditingId(cat.id);
                             setEditName(cat.name);
+                            setEditFinalists(
+                              cat.numFinalists && cat.numFinalists > 0 ? cat.numFinalists : ''
+                            );
                           }}
                         >
                           Edit
@@ -337,7 +362,7 @@ export default function AdminPage() {
                 </tr>
                 {expandedCat === cat.id && (
                   <tr>
-                    <td colSpan={2} style={styles.athleteCell}>
+                    <td colSpan={3} style={styles.athleteCell}>
                       {athletesLoading ? (
                         <p style={styles.muted}>Loading athletes…</p>
                       ) : (

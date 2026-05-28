@@ -33,7 +33,7 @@
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| — | — | — | — |
+| US-C02 | Configure number of finalists | `copilot/us-c02-configure-number-of-finalists` | Per-category `numFinalists`; Run 2 = finals start list derived from Run 1 ranking |
 
 ### US-REF-00 Summary (merged via #74)
 

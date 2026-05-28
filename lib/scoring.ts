@@ -300,3 +300,55 @@ export function rankAthletes(
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+/**
+ * Derive the finalist start list for a category from the qualification
+ * (Run 1) ranking.
+ *
+ * Behavior:
+ * - When `category.numFinalists` is `null`, `undefined`, `0`, or greater than
+ *   or equal to the athlete count, the original athlete list is returned
+ *   unchanged (no finals filtering).
+ * - Otherwise athletes are ranked by Run 1 scores only and the top
+ *   `numFinalists` are returned in ranking order (best first). Ties are
+ *   broken by bib ascending (the stable order produced by `rankAthletes`).
+ * - Athletes with no Run 1 score share the last rank; they may still be
+ *   included if `numFinalists` exceeds the number of athletes with scores.
+ *
+ * Qualification (Run 1) scores are read-only inputs to this function — the
+ * function never mutates them — so qualification results remain stable after
+ * finals begin.
+ *
+ * @param scores      All scores for the event (Run 2 scores are ignored).
+ * @param category    The category whose finalist list to derive.
+ * @returns           Ordered finalist athletes (top of qualification first),
+ *                    or the full athlete list when no finals phase is set.
+ */
+export function computeFinalists(
+  scores: Score[],
+  category: Category,
+): Athlete[] {
+  const athletes = category.athletes ?? [];
+  const n = category.numFinalists;
+
+  if (n === null || n === undefined || n <= 0 || n >= athletes.length) {
+    return athletes;
+  }
+
+  // Rank using Run 1 scores only — this is the qualification ranking.
+  const qualScores = scores.filter(
+    (s) => s.categoryId === category.id && s.run === 1,
+  );
+  const ranked = rankAthletes(qualScores, [category], athletes);
+
+  // `rankAthletes` already returns rank ascending with stable bib tie-break.
+  // Map back to the original Athlete objects in that order.
+  const byBib = new Map(athletes.map((a) => [a.bib, a]));
+  const finalists: Athlete[] = [];
+  for (const r of ranked) {
+    const a = byBib.get(r.athleteBib);
+    if (a) finalists.push(a);
+    if (finalists.length >= n) break;
+  }
+  return finalists;
+}

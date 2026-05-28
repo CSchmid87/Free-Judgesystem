@@ -27,6 +27,7 @@ EventData
 ├── categories: Category[]
 │   ├── id: string (UUID)
 │   ├── name: string
+│   ├── numFinalists?: number | null   ← optional: top-N from Run 1 advance to Run 2
 │   └── athletes: Athlete[]
 │       ├── bib: number (unique within category)
 │       └── name: string
@@ -51,6 +52,10 @@ EventData
 - 2 runs per category, multiple attempts per run possible (re-run)
 - Best attempt per run → best-of-two-runs → final score
 - Standard competition ranking (1,1,3) with tie detection
+- **Finals (optional)**: when `Category.numFinalists` is set, Run 2 is the finals
+  phase. The start list for Run 2 is the top-N athletes by Run 1 (qualification)
+  ranking. Qualification scores are immutable, so qualification results remain
+  stable after finals begin. See `computeFinalists()` in `lib/scoring.ts`.
 
 ## File Map
 
