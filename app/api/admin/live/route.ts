@@ -156,6 +156,9 @@ export async function PUT(request: NextRequest) {
       );
     }
     updated.activeAthleteIndex = body.activeAthleteIndex as number;
+    if (body.activeAthleteIndex !== currentLive.activeAthleteIndex) {
+      updated.activeAttemptNumber = 1;
+    }
   }
 
   // Clamp activeAthleteIndex to valid range
