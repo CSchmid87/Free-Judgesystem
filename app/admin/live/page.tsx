@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { CategorySummary, ClientAthlete } from '@/lib/client-types';
-import type { LiveState, LiveUpdatePayload } from '@/lib/types';
-import { DEFAULT_LIVE_STATE } from '@/lib/types';
+import type { LiveState, LiveUpdatePayload, RunsConfig } from '@/lib/types';
+import { DEFAULT_LIVE_STATE, DEFAULT_RUNS_CONFIG } from '@/lib/types';
 
 interface ActiveCategory {
   id: string;
@@ -29,6 +29,7 @@ function LiveControlInner() {
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [activeCategory, setActiveCategory] = useState<ActiveCategory | null>(null);
   const [liveState, setLiveState] = useState<LiveState>({ ...DEFAULT_LIVE_STATE });
+  const [runsConfig, setRunsConfig] = useState<RunsConfig>({ ...DEFAULT_RUNS_CONFIG });
   const [judgeScores, setJudgeScores] = useState<JudgeScores>({ J1: null, J2: null, J3: null });
   const [isLocked, setIsLocked] = useState(false);
   const [rerunning, setRerunning] = useState(false);
@@ -41,6 +42,7 @@ function LiveControlInner() {
       if (!res.ok) throw new Error('Failed to load live state');
       const data = await res.json();
       setLiveState(data.liveState);
+      setRunsConfig(data.runsConfig ?? DEFAULT_RUNS_CONFIG);
       setCategories(data.categories);
       setActiveCategory(data.activeCategory);
       setJudgeScores(data.judgeScores ?? { J1: null, J2: null, J3: null });
@@ -88,7 +90,11 @@ function LiveControlInner() {
     updateLive({ activeCategoryId: value });
   };
 
-  const handleRunChange = (run: 1 | 2) => {
+  const handlePhaseChange = (phase: 'qualification' | 'finals') => {
+    updateLive({ activePhase: phase });
+  };
+
+  const handleRunChange = (run: number) => {
     updateLive({ activeRun: run });
   };
 
@@ -165,11 +171,42 @@ function LiveControlInner() {
         )}
       </section>
 
+      {/* Phase selector */}
+      <section style={{ marginBottom: '1.5rem' }}>
+        <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Active Phase</label>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {(['qualification', 'finals'] as const).map((phase) => {
+              const currentPhase = liveState.activePhase ?? 'qualification';
+              return (
+            <button
+              key={phase}
+              onClick={() => handlePhaseChange(phase)}
+              style={{
+                flex: 1,
+                padding: '0.5rem 1rem',
+                fontSize: '1rem',
+                border: '2px solid',
+                borderColor: currentPhase === phase ? '#7c3aed' : '#ccc',
+                backgroundColor: currentPhase === phase ? '#7c3aed' : '#fff',
+                color: currentPhase === phase ? '#fff' : '#333',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: currentPhase === phase ? 700 : 400,
+                textTransform: 'capitalize',
+              }}
+            >
+              {phase} ({runsConfig[phase]} run{runsConfig[phase] !== 1 ? 's' : ''})
+            </button>
+              );
+            })}
+        </div>
+      </section>
+
       {/* Run selector */}
       <section style={{ marginBottom: '1.5rem' }}>
         <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Active Run</label>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {([1, 2] as const).map((run) => (
+          {Array.from({ length: runsConfig[liveState.activePhase ?? 'qualification'] }, (_, i) => i + 1).map((run) => (
             <button
               key={run}
               onClick={() => handleRunChange(run)}

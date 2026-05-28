@@ -35,6 +35,7 @@ export async function GET() {
 
   const live = event.liveState ?? {
     activeCategoryId: null,
+    activePhase: 'qualification' as const,
     activeRun: 1 as const,
     activeAthleteIndex: 0,
   };

@@ -16,6 +16,9 @@ export type {
   RankedAthlete,
 } from './scoring';
 
+// Re-export RunsConfig for client pages
+export type { RunsConfig } from './types';
+
 // ─── Category summary (returned by multiple admin endpoints) ─────────────────
 
 export interface CategorySummary {

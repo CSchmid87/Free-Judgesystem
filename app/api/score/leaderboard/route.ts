@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
 
   const live = event.liveState ?? {
     activeCategoryId: null,
+    activePhase: 'qualification' as const,
     activeRun: 1 as const,
     activeAthleteIndex: 0,
     activeAttemptNumber: 1,
@@ -54,8 +55,12 @@ export async function GET(request: NextRequest) {
     (s) => s.judgeRole === role && s.categoryId === category.id,
   );
 
+  // Determine total runs for the active phase
+  const runsConfig = event.runsConfig ?? { qualification: 2, finals: 2 };
+  const numRuns = runsConfig[live.activePhase ?? 'qualification'];
+
   // Rank athletes within the active category using only this judge's scores
-  const ranked = rankAthletes(judgeScores, [category], category.athletes);
+  const ranked = rankAthletes(judgeScores, [category], category.athletes, numRuns);
 
   return NextResponse.json(
     {

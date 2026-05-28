@@ -5,6 +5,23 @@ export const JUDGE_ROLES = ['J1', 'J2', 'J3'] as const;
 export type JudgeRole = (typeof JUDGE_ROLES)[number];
 
 /**
+ * Number of runs per competition phase.
+ * Both values must be positive integers in the range 1–5.
+ */
+export interface RunsConfig {
+  qualification: number;
+  finals: number;
+}
+
+/**
+ * The default runs configuration used when creating a new event.
+ */
+export const DEFAULT_RUNS_CONFIG: RunsConfig = {
+  qualification: 2,
+  finals: 2,
+};
+
+/**
  * An athlete registered in a category.
  */
 export interface Athlete {
@@ -58,7 +75,7 @@ export interface Score {
   judgeRole: JudgeRole;
   categoryId: string;
   athleteBib: number;
-  run: 1 | 2;
+  run: number; // run number within the active phase (1-based; validated as positive integer by the score API)
   attempt: number; // attempt number within a run (starts at 1, incremented by re-run)
   value: number; // 1-100
 }
@@ -68,7 +85,8 @@ export interface Score {
  */
 export interface LiveState {
   activeCategoryId: string | null;
-  activeRun: 1 | 2;
+  activePhase?: 'qualification' | 'finals'; // optional for backward compat; defaults to 'qualification'
+  activeRun: number; // 1-based run index within the active phase
   activeAthleteIndex: number; // index into sorted athletes array, 0 when empty
   activeAttemptNumber: number; // attempt within a run, starts at 1, incremented by re-run
 }
@@ -79,6 +97,7 @@ export interface LiveState {
  */
 export const DEFAULT_LIVE_STATE: LiveState = {
   activeCategoryId: null,
+  activePhase: 'qualification',
   activeRun: 1,
   activeAthleteIndex: 0,
   activeAttemptNumber: 1,
@@ -109,9 +128,11 @@ export type RouteContext<T extends Record<string, string> = Record<string, strin
  * @property adminKey   - Cryptographic secret for admin access
  * @property judgeKeys  - Map of judge role → secret key
  * @property categories - Scoring categories for the event
+ * @property runsConfig - Number of runs per phase (qualification / finals)
+ *                         Optional for backward compat — defaults to { qualification: 2, finals: 2 }
  * @property liveState  - Current live competition state
  * @property scores     - All submitted judge scores
- * @property lockedRuns - Lock keys ("categoryId:run") preventing further scoring
+ * @property lockedRuns - Lock keys ("categoryId:phase:run") preventing further scoring
  */
 export interface EventData {
   id: string;
@@ -120,6 +141,7 @@ export interface EventData {
   adminKey: string;
   judgeKeys: Record<JudgeRole, string>;
   categories: Category[];
+  runsConfig?: RunsConfig;
   liveState: LiveState;
   scores: Score[];
   lockedRuns: string[];
@@ -153,6 +175,16 @@ export function isEventData(value: unknown): value is EventData {
     if (!obj.categories.every(isCategory)) return false;
   }
 
+  // RunsConfig: optional for backward compat (defaults applied at read time)
+  if ('runsConfig' in obj) {
+    if (!obj.runsConfig || typeof obj.runsConfig !== 'object') return false;
+    const rc = obj.runsConfig as Record<string, unknown>;
+    if (
+      typeof rc.qualification !== 'number' || !Number.isInteger(rc.qualification) || rc.qualification < 1 ||
+      typeof rc.finals !== 'number' || !Number.isInteger(rc.finals) || rc.finals < 1
+    ) return false;
+  }
+
   // Scores: optional for backward compat
   if ('scores' in obj) {
     if (!Array.isArray(obj.scores)) return false;
@@ -168,7 +200,9 @@ export function isEventData(value: unknown): value is EventData {
     if (!obj.liveState || typeof obj.liveState !== 'object') return false;
     const ls = obj.liveState as Record<string, unknown>;
     if (ls.activeCategoryId !== null && typeof ls.activeCategoryId !== 'string') return false;
-    if (ls.activeRun !== 1 && ls.activeRun !== 2) return false;
+    // activePhase: optional for backward compat (defaults to 'qualification')
+    if ('activePhase' in ls && ls.activePhase !== 'qualification' && ls.activePhase !== 'finals') return false;
+    if (typeof ls.activeRun !== 'number' || !Number.isInteger(ls.activeRun) || (ls.activeRun as number) < 1) return false;
     if (typeof ls.activeAthleteIndex !== 'number') return false;
     // activeAttemptNumber: optional for backward compat (defaults to 1)
     if ('activeAttemptNumber' in ls && typeof ls.activeAttemptNumber !== 'number') return false;

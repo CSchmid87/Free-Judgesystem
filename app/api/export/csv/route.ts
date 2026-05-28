@@ -67,10 +67,13 @@ export async function GET(request: NextRequest) {
     lines.push(csvRow(['Rank', 'Bib', 'Name', 'Run 1', 'Run 2', 'Best Run', 'Score']));
 
     // Ranked rows
+    const runsConfig = event.runsConfig ?? { qualification: 2, finals: 2 };
+    const numRuns = Math.max(runsConfig.qualification, runsConfig.finals);
     const ranked: RankedAthlete[] = rankAthletes(
       event.scores ?? [],
       [cat],
       cat.athletes,
+      numRuns,
     );
 
     for (const entry of ranked) {

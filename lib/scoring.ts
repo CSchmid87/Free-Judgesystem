@@ -49,12 +49,12 @@ export interface FinalScoreResult {
  * @property run1          - RunScoreResult for the best attempt of run 1 (or
  *                           null if no scores).
  * @property run2          - RunScoreResult for the best attempt of run 2 (or
- *                           null if no scores).
+ *                           null when numRuns < 2 or when no scores exist for run 2).
  */
 export interface CategoryScoreDetail {
   categoryId: string;
   categoryName: string;
-  bestRun: 1 | 2 | null;
+  bestRun: number | null;
   bestAverage: number | null;
   bestAttempt: number | null;
   complete: boolean;
@@ -89,14 +89,14 @@ export interface RankedAthlete extends FinalScoreResult {
  * @param scores      All scores in the event (pre-filtered is fine too).
  * @param categoryId  The category to compute for.
  * @param athleteBib  The athlete bib number.
- * @param run         Which run (1 or 2).
+ * @param run         Which run (positive integer).
  * @returns           RunScoreResult for the best attempt of this run.
  */
 export function computeRunScore(
   scores: Score[],
   categoryId: string,
   athleteBib: number,
-  run: 1 | 2,
+  run: number,
 ): RunScoreResult | null {
   // Gather all scores for this category / athlete / run
   const relevant = scores.filter(
@@ -168,12 +168,15 @@ export function computeRunScore(
  * @param scores      All scores in the event.
  * @param categories  All categories in the event.
  * @param athlete     The athlete.
+ * @param numRuns     Total number of runs per phase (default 2). Run results
+ *                    are stored in `run1`/`run2` (first two runs).
  * @returns           FinalScoreResult with per-category breakdown.
  */
 export function computeFinalScore(
   scores: Score[],
   categories: Category[],
   athlete: Athlete,
+  numRuns = 2,
 ): FinalScoreResult {
   const categoryScores: CategoryScoreDetail[] = [];
   let allComplete = true;
@@ -181,31 +184,36 @@ export function computeFinalScore(
   let sum = 0;
 
   for (const cat of categories) {
-    const run1 = computeRunScore(scores, cat.id, athlete.bib, 1);
-    const run2 = computeRunScore(scores, cat.id, athlete.bib, 2);
+    // Compute run scores for all configured runs
+    const runResults: (RunScoreResult | null)[] = [];
+    for (let r = 1; r <= numRuns; r++) {
+      runResults.push(computeRunScore(scores, cat.id, athlete.bib, r));
+    }
 
-    let bestRun: 1 | 2 | null = null;
+    let bestRun: number | null = null;
     let bestAverage: number | null = null;
     let bestAttempt: number | null = null;
     let catComplete = false;
 
-    if (run1 && run2) {
-      // Both runs exist — pick the one with the higher average
-      // Prefer complete over incomplete
-      if (run1.complete && !run2.complete) {
-        bestRun = 1;
-      } else if (run2.complete && !run1.complete) {
-        bestRun = 2;
-      } else {
-        bestRun = (run1.average ?? -1) >= (run2.average ?? -1) ? 1 : 2;
+    // Pick the best run: prefer complete, then highest average
+    let bestResult: RunScoreResult | null = null;
+    for (let r = 0; r < runResults.length; r++) {
+      const result = runResults[r];
+      if (!result) continue;
+      if (!bestResult) {
+        bestResult = result;
+        bestRun = r + 1;
+      } else if (result.complete && !bestResult.complete) {
+        bestResult = result;
+        bestRun = r + 1;
+      } else if (result.complete === bestResult.complete) {
+        if ((result.average ?? -1) > (bestResult.average ?? -1)) {
+          bestResult = result;
+          bestRun = r + 1;
+        }
       }
-    } else if (run1) {
-      bestRun = 1;
-    } else if (run2) {
-      bestRun = 2;
     }
 
-    const bestResult = bestRun === 1 ? run1 : bestRun === 2 ? run2 : null;
     if (bestResult) {
       bestAverage = bestResult.average;
       bestAttempt = bestResult.attempt;
@@ -226,8 +234,8 @@ export function computeFinalScore(
       bestAverage,
       bestAttempt,
       complete: catComplete,
-      run1,
-      run2,
+      run1: runResults[0] ?? null,
+      run2: runResults[1] ?? null,
     });
   }
 
@@ -254,15 +262,17 @@ export function computeFinalScore(
  * @param scores      All scores in the event.
  * @param categories  All categories in the event.
  * @param athletes    The athletes to rank.
+ * @param numRuns     Total number of runs per phase (default 2).
  * @returns           Array of RankedAthlete sorted by rank ascending, then bib.
  */
 export function rankAthletes(
   scores: Score[],
   categories: Category[],
   athletes: Athlete[],
+  numRuns = 2,
 ): RankedAthlete[] {
   // Compute final scores for all athletes
-  const finals = athletes.map((a) => computeFinalScore(scores, categories, a));
+  const finals = athletes.map((a) => computeFinalScore(scores, categories, a, numRuns));
 
   // Separate scored and unscored
   const scored = finals.filter((f) => f.total !== null);

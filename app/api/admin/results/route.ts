@@ -49,8 +49,12 @@ export const GET = withAdminAuth(async (request: NextRequest, event: EventData) 
     ? allScores.filter((s) => s.categoryId === category.id && s.judgeRole === judgeFilter)
     : allScores;
 
+  // Determine total runs for ranking (use total configured, both phases)
+  const runsConfig = event.runsConfig ?? { qualification: 2, finals: 2 };
+  const numRuns = Math.max(runsConfig.qualification, runsConfig.finals);
+
   // Rank athletes within this category
-  const ranked = rankAthletes(scores, [category], category.athletes);
+  const ranked = rankAthletes(scores, [category], category.athletes, numRuns);
 
   const res = NextResponse.json({
     categories: categorySummaries,

@@ -12,6 +12,8 @@ interface CreatedEvent {
 
 export default function CreateEventPage() {
   const [name, setName] = useState('');
+  const [qualificationRuns, setQualificationRuns] = useState(2);
+  const [finalRuns, setFinalRuns] = useState(2);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<CreatedEvent | null>(null);
@@ -54,6 +56,8 @@ export default function CreateEventPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
+          qualificationRuns,
+          finalRuns,
           confirm: showConfirm || !existingName,
         }),
       });
@@ -182,6 +186,38 @@ export default function CreateEventPage() {
           />
         </label>
 
+        <fieldset style={styles.fieldset}>
+          <legend style={styles.legend}>Runs per Phase</legend>
+          <div style={styles.runsRow}>
+            <label style={styles.runsLabel}>
+              Qualification runs
+              <select
+                value={qualificationRuns}
+                onChange={(e) => setQualificationRuns(Number(e.target.value))}
+                style={styles.select}
+                disabled={loading}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            <label style={styles.runsLabel}>
+              Finals runs
+              <select
+                value={finalRuns}
+                onChange={(e) => setFinalRuns(Number(e.target.value))}
+                style={styles.select}
+                disabled={loading}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
         {error && <p style={styles.error}>{error}</p>}
 
         {showConfirm && (
@@ -250,6 +286,35 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '1rem',
     border: '1px solid #ccc',
     borderRadius: 4,
+  },
+  fieldset: {
+    border: '1px solid #ccc',
+    borderRadius: 4,
+    padding: '0.75rem 1rem',
+  },
+  legend: {
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    color: '#374151',
+    padding: '0 0.25rem',
+  },
+  runsRow: {
+    display: 'flex',
+    gap: '2rem',
+  },
+  runsLabel: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0.25rem',
+    fontWeight: 500,
+    fontSize: '0.9rem',
+  },
+  select: {
+    padding: '0.4rem 0.5rem',
+    fontSize: '0.95rem',
+    border: '1px solid #ccc',
+    borderRadius: 4,
+    width: 80,
   },
   button: {
     padding: '0.6rem 1.2rem',
