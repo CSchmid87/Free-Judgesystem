@@ -294,6 +294,40 @@ export function rankAthletes(
   return ranked;
 }
 
+/**
+ * Return the athlete start order for a run.
+ *
+ * Run 1 keeps the registered order. Run 2 uses the qualification ranking
+ * from run 1, reversed so the best qualifier starts last.
+ */
+export function getRunAthletes(
+  scores: Score[],
+  category: Category,
+  run: 1 | 2,
+): Athlete[] {
+  if (run === 1) {
+    return category.athletes;
+  }
+
+  const qualificationScores = scores.filter(
+    (score) => score.categoryId === category.id && score.run === 1,
+  );
+
+  if (qualificationScores.length === 0) {
+    return category.athletes;
+  }
+
+  const ranked = rankAthletes(qualificationScores, [category], category.athletes);
+  if (ranked.every((entry) => entry.total === null)) {
+    return category.athletes;
+  }
+
+  return ranked
+    .slice()
+    .reverse()
+    .map(({ athleteBib, athleteName }) => ({ bib: athleteBib, name: athleteName }));
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Round to 2 decimal places. */

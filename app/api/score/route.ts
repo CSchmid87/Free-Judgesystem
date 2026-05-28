@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateJudgeKey } from '@/lib/auth';
+import { getRunAthletes } from '@/lib/scoring';
 import type { Score } from '@/lib/types';
 
 /**
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const athletes = category.athletes;
+  const athletes = getRunAthletes(event.scores ?? [], category, live.activeRun);
   if (athletes.length === 0) {
     return NextResponse.json(
       { error: 'No athletes in active category' },
@@ -96,10 +97,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const idx = Math.min(
-    Math.max(live.activeAthleteIndex, 0),
-    athletes.length - 1,
-  );
+  const idx = Math.min(Math.max(live.activeAthleteIndex, 0), athletes.length - 1);
   const athlete = athletes[idx];
 
   /* ── 5. Upsert score for active attempt ─────────────────────── */
@@ -166,21 +164,24 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const category = event.categories.find(
-    (c) => c.id === live.activeCategoryId,
-  );
-  if (!category || category.athletes.length === 0) {
+  const category = event.categories.find((c) => c.id === live.activeCategoryId);
+  if (!category) {
     return NextResponse.json(
       { score: null },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   }
 
-  const idx = Math.min(
-    Math.max(live.activeAthleteIndex, 0),
-    category.athletes.length - 1,
-  );
-  const athlete = category.athletes[idx];
+  const athletes = getRunAthletes(event.scores ?? [], category, live.activeRun);
+  if (athletes.length === 0) {
+    return NextResponse.json(
+      { score: null },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
+  const idx = Math.min(Math.max(live.activeAthleteIndex, 0), athletes.length - 1);
+  const athlete = athletes[idx];
 
   const existing = (event.scores ?? []).find(
     (s) =>
