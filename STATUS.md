@@ -33,7 +33,7 @@
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| — | — | — | — |
+| US-C03 | Adjust final run count before finals start | `copilot/us-c03-adjust-final-run-count` | EventData gains `finalRunCount` + `finalsStarted`; new `/api/admin/finals` (GET/PUT); admin UI panel with "not started" status, run-count editor, and Start Finals button; locked once started. |
 
 ### US-REF-00 Summary (merged via #74)
 
