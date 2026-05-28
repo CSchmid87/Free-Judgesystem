@@ -3,6 +3,7 @@ import {
   computeRunScore,
   computeFinalScore,
   rankAthletes,
+  computeFinalists,
 } from '../lib/scoring';
 import type { Score, Category, Athlete } from '../lib/types';
 
@@ -279,5 +280,118 @@ describe('rankAthletes', () => {
     ];
     const result = computeRunScore(scores, 'cat1', 1, 1);
     expect(result!.average).toBe(78); // (77+78+79)/3 = 78
+  });
+});
+
+// ─── computeFinalists ────────────────────────────────────────────────────────
+
+describe('computeFinalists', () => {
+  const athletes: Athlete[] = [
+    { bib: 1, name: 'Anna' },
+    { bib: 2, name: 'Bea' },
+    { bib: 3, name: 'Cara' },
+    { bib: 4, name: 'Dora' },
+    { bib: 5, name: 'Eva' },
+  ];
+
+  function r1(bib: number, j1: number, j2: number, j3: number): Score[] {
+    return [
+      { judgeRole: 'J1', categoryId: 'cat1', athleteBib: bib, run: 1, attempt: 1, value: j1 },
+      { judgeRole: 'J2', categoryId: 'cat1', athleteBib: bib, run: 1, attempt: 1, value: j2 },
+      { judgeRole: 'J3', categoryId: 'cat1', athleteBib: bib, run: 1, attempt: 1, value: j3 },
+    ];
+  }
+
+  it('T-F01: no numFinalists → returns all athletes unchanged', () => {
+    const cat: Category = { id: 'cat1', name: 'C', athletes };
+    expect(computeFinalists([], cat)).toEqual(athletes);
+  });
+
+  it('T-F02: numFinalists null → returns all athletes', () => {
+    const cat: Category = { id: 'cat1', name: 'C', athletes, numFinalists: null };
+    expect(computeFinalists([], cat)).toEqual(athletes);
+  });
+
+  it('T-F03: numFinalists 0 → returns all athletes (no filtering)', () => {
+    const cat: Category = { id: 'cat1', name: 'C', athletes, numFinalists: 0 };
+    expect(computeFinalists([], cat)).toEqual(athletes);
+  });
+
+  it('T-F04: numFinalists ≥ athlete count → returns all athletes', () => {
+    const cat: Category = { id: 'cat1', name: 'C', athletes, numFinalists: 10 };
+    expect(computeFinalists([], cat)).toEqual(athletes);
+  });
+
+  it('T-F05: returns top-N athletes ranked by Run 1 score, best first', () => {
+    const scores: Score[] = [
+      ...r1(1, 50, 50, 50), // avg 50
+      ...r1(2, 90, 90, 90), // avg 90
+      ...r1(3, 70, 70, 70), // avg 70
+      ...r1(4, 60, 60, 60), // avg 60
+      ...r1(5, 80, 80, 80), // avg 80
+    ];
+    const cat: Category = { id: 'cat1', name: 'C', athletes, numFinalists: 3 };
+    const finalists = computeFinalists(scores, cat);
+    expect(finalists.map((a) => a.bib)).toEqual([2, 5, 3]);
+  });
+
+  it('T-F06: ignores Run 2 scores when ranking for finals', () => {
+    const scores: Score[] = [
+      ...r1(1, 50, 50, 50),
+      ...r1(2, 90, 90, 90),
+      ...r1(3, 70, 70, 70),
+      // Run 2 noise that must not influence selection
+      { judgeRole: 'J1', categoryId: 'cat1', athleteBib: 1, run: 2, attempt: 1, value: 100 },
+      { judgeRole: 'J2', categoryId: 'cat1', athleteBib: 1, run: 2, attempt: 1, value: 100 },
+      { judgeRole: 'J3', categoryId: 'cat1', athleteBib: 1, run: 2, attempt: 1, value: 100 },
+    ];
+    const cat: Category = {
+      id: 'cat1',
+      name: 'C',
+      athletes: athletes.slice(0, 3),
+      numFinalists: 2,
+    };
+    const finalists = computeFinalists(scores, cat);
+    expect(finalists.map((a) => a.bib)).toEqual([2, 3]);
+  });
+
+  it('T-F07: ties broken by bib ascending (stable order)', () => {
+    const scores: Score[] = [
+      ...r1(1, 80, 80, 80),
+      ...r1(2, 80, 80, 80),
+      ...r1(3, 70, 70, 70),
+    ];
+    const cat: Category = {
+      id: 'cat1',
+      name: 'C',
+      athletes: athletes.slice(0, 3),
+      numFinalists: 2,
+    };
+    const finalists = computeFinalists(scores, cat);
+    expect(finalists.map((a) => a.bib)).toEqual([1, 2]);
+  });
+
+  it('T-F08: athletes without scores ranked last but included if N > scored count', () => {
+    const scores: Score[] = [
+      ...r1(2, 90, 90, 90),
+      ...r1(4, 80, 80, 80),
+    ];
+    const cat: Category = { id: 'cat1', name: 'C', athletes, numFinalists: 3 };
+    const finalists = computeFinalists(scores, cat);
+    // Top 2 are scored (2, 4). Third spot goes to first unscored by bib (1).
+    expect(finalists.map((a) => a.bib)).toEqual([2, 4, 1]);
+  });
+
+  it('T-F09: does not mutate input scores or athletes', () => {
+    const scores: Score[] = [...r1(1, 80, 80, 80), ...r1(2, 70, 70, 70)];
+    const original = JSON.parse(JSON.stringify(scores));
+    const cat: Category = {
+      id: 'cat1',
+      name: 'C',
+      athletes: athletes.slice(0, 2),
+      numFinalists: 1,
+    };
+    computeFinalists(scores, cat);
+    expect(scores).toEqual(original);
   });
 });

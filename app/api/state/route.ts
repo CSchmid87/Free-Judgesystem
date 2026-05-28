@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadEvent } from '@/lib/store';
+import { computeFinalists } from '@/lib/scoring';
 
 /**
  * GET /api/state
@@ -43,7 +44,14 @@ export async function GET() {
     ? event.categories.find((c) => c.id === live.activeCategoryId) ?? null
     : null;
 
-  const athletes = category?.athletes ?? [];
+  // On finals (Run 2) the active list is the configured finalists; otherwise
+  // it is the full athlete list. Falls back to full list when no finals
+  // phase is configured (legacy behavior).
+  const athletes = category
+    ? (live.activeRun === 2
+        ? computeFinalists(event.scores ?? [], category)
+        : category.athletes)
+    : [];
   const athleteCount = athletes.length;
 
   // Clamp index to valid range

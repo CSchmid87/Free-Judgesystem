@@ -26,11 +26,18 @@ export function isAthlete(value: unknown): value is Athlete {
 
 /**
  * A scoring category within an event (e.g. "Technik", "Choreografie").
+ *
+ * @property numFinalists - Optional. When set to a positive integer the
+ *   organizer has configured a finals phase: only this many athletes
+ *   (selected from the Run 1 / qualification ranking) participate in Run 2.
+ *   `null`, `undefined`, or `0` mean no finals phase — all athletes compete
+ *   in both runs (legacy behavior).
  */
 export interface Category {
   id: string;
   name: string;
   athletes: Athlete[];
+  numFinalists?: number | null;
 }
 
 /**
@@ -47,6 +54,12 @@ export function isCategory(value: unknown): value is Category {
   if ('athletes' in obj) {
     if (!Array.isArray(obj.athletes)) return false;
     if (!obj.athletes.every(isAthlete)) return false;
+  }
+  // numFinalists: optional. Either null or a positive integer.
+  if ('numFinalists' in obj && obj.numFinalists !== null && obj.numFinalists !== undefined) {
+    if (typeof obj.numFinalists !== 'number'
+      || !Number.isInteger(obj.numFinalists)
+      || obj.numFinalists < 0) return false;
   }
   return true;
 }

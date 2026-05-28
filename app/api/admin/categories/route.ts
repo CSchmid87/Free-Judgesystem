@@ -156,8 +156,35 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Category name already exists' }, { status: 409 });
   }
 
+  // numFinalists (optional). Accept null/undefined to clear, or a non-negative
+  // integer up to the athlete count (we still allow values >= athlete count;
+  // `computeFinalists` treats them as "no filtering").
+  let numFinalists: number | null | undefined = existing.numFinalists;
+  if ('numFinalists' in body) {
+    const v = body.numFinalists;
+    if (v === null) {
+      numFinalists = null;
+    } else if (
+      typeof v === 'number' &&
+      Number.isInteger(v) &&
+      v >= 0
+    ) {
+      numFinalists = v;
+    } else {
+      return NextResponse.json(
+        { error: 'numFinalists must be a non-negative integer or null' },
+        { status: 400 }
+      );
+    }
+  }
+
   const updatedCategories = [...categories];
-  updatedCategories[idx] = { id, name, athletes: existing.athletes ?? [] };
+  updatedCategories[idx] = {
+    id,
+    name,
+    athletes: existing.athletes ?? [],
+    ...(numFinalists !== undefined ? { numFinalists } : {}),
+  };
 
   const updated = updateEvent({ categories: updatedCategories });
   return NextResponse.json({ category: updatedCategories[idx], categories: updated.categories });
