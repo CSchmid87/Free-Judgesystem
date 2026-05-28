@@ -86,8 +86,10 @@ export async function POST(request: NextRequest) {
     categories: raw.categories ?? [],
     scores: raw.scores ?? [],
     lockedRuns: raw.lockedRuns ?? [],
+    runsConfig: raw.runsConfig ?? { qualification: 2, finals: 2 },
     liveState: raw.liveState ?? {
       activeCategoryId: null,
+      activePhase: 'qualification',
       activeRun: 1,
       activeAthleteIndex: 0,
       activeAttemptNumber: 1,
@@ -120,8 +122,8 @@ export async function POST(request: NextRequest) {
       if (typeof sc.value !== 'number' || sc.value < 1 || sc.value > 100 || !Number.isInteger(sc.value)) {
         errors.push(`scores[${i}]: value must be integer 1–100`);
       }
-      if (sc.run !== 1 && sc.run !== 2) {
-        errors.push(`scores[${i}]: run must be 1 or 2`);
+      if (typeof sc.run !== 'number' || !Number.isInteger(sc.run) || sc.run < 1) {
+        errors.push(`scores[${i}]: run must be a positive integer`);
       }
       if (typeof sc.attempt !== 'number' || !Number.isInteger(sc.attempt) || sc.attempt < 1) {
         errors.push(`scores[${i}]: attempt must be a positive integer`);

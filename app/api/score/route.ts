@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
   /* ── 4. Reject if run is locked (no active category / athlete) */
   const live = event.liveState ?? {
     activeCategoryId: null,
-    activeRun: 1 as const,
+    activePhase: 'qualification' as const,
+    activeRun: 1,
     activeAthleteIndex: 0,
     activeAttemptNumber: 1,
   };
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── 4b. Reject if category/run is locked ─────────────────── */
-  const lockKey = `${live.activeCategoryId}:${live.activeRun}`;
+  const lockKey = `${live.activeCategoryId}:${live.activePhase ?? 'qualification'}:${live.activeRun}`;
   if ((event.lockedRuns ?? []).includes(lockKey)) {
     return NextResponse.json(
       { error: 'This run is locked' },
@@ -153,7 +154,8 @@ export async function GET(request: NextRequest) {
 
   const live = event.liveState ?? {
     activeCategoryId: null,
-    activeRun: 1 as const,
+    activePhase: 'qualification' as const,
+    activeRun: 1,
     activeAthleteIndex: 0,
     activeAttemptNumber: 1,
   };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
-import { JUDGE_ROLES } from '@/lib/types';
+import { JUDGE_ROLES, DEFAULT_RUNS_CONFIG } from '@/lib/types';
 import type { LiveState } from '@/lib/types';
 
 /**
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
 
   const liveState: LiveState = event.liveState ?? {
     activeCategoryId: null,
+    activePhase: 'qualification',
     activeRun: 1,
     activeAthleteIndex: 0,
     activeAttemptNumber: 1,
@@ -56,15 +57,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Determine lock state for current category/run
+  // Determine lock state for current category/phase/run
   const lockedRuns = event.lockedRuns ?? [];
   const currentLockKey = liveState.activeCategoryId
-    ? `${liveState.activeCategoryId}:${liveState.activeRun}`
+    ? `${liveState.activeCategoryId}:${liveState.activePhase ?? 'qualification'}:${liveState.activeRun}`
     : null;
   const isLocked = currentLockKey ? lockedRuns.includes(currentLockKey) : false;
 
   return NextResponse.json({
     liveState,
+    runsConfig: event.runsConfig ?? DEFAULT_RUNS_CONFIG,
     categories: event.categories.map((c) => ({
       id: c.id,
       name: c.name,
@@ -110,13 +112,31 @@ export async function PUT(request: NextRequest) {
 
   const currentLive: LiveState = event.liveState ?? {
     activeCategoryId: null,
+    activePhase: 'qualification',
     activeRun: 1,
     activeAthleteIndex: 0,
     activeAttemptNumber: 1,
   };
 
+  const runsConfig = event.runsConfig ?? DEFAULT_RUNS_CONFIG;
+
   // Apply partial updates
   const updated: LiveState = { ...currentLive };
+
+  if ('activePhase' in body) {
+    if (body.activePhase !== 'qualification' && body.activePhase !== 'finals') {
+      return NextResponse.json(
+        { error: "activePhase must be 'qualification' or 'finals'" },
+        { status: 400 }
+      );
+    }
+    updated.activePhase = body.activePhase as 'qualification' | 'finals';
+    // Reset run and attempt when phase changes
+    if (body.activePhase !== currentLive.activePhase) {
+      updated.activeRun = 1;
+      updated.activeAttemptNumber = 1;
+    }
+  }
 
   if ('activeCategoryId' in body) {
     if (body.activeCategoryId !== null && typeof body.activeCategoryId !== 'string') {
@@ -135,13 +155,20 @@ export async function PUT(request: NextRequest) {
   }
 
   if ('activeRun' in body) {
-    if (body.activeRun !== 1 && body.activeRun !== 2) {
+    const activePhase = updated.activePhase ?? 'qualification';
+    const maxRuns = runsConfig[activePhase];
+    if (
+      typeof body.activeRun !== 'number' ||
+      !Number.isInteger(body.activeRun) ||
+      body.activeRun < 1 ||
+      body.activeRun > maxRuns
+    ) {
       return NextResponse.json(
-        { error: 'activeRun must be 1 or 2' },
+        { error: `activeRun must be an integer between 1 and ${maxRuns} for the '${activePhase}' phase` },
         { status: 400 }
       );
     }
-    updated.activeRun = body.activeRun as 1 | 2;
+    updated.activeRun = body.activeRun as number;
     // Reset attempt when run changes
     if (body.activeRun !== currentLive.activeRun) {
       updated.activeAttemptNumber = 1;
@@ -179,10 +206,11 @@ export async function PUT(request: NextRequest) {
 
   if ('lock' in body && typeof body.lock === 'boolean') {
     const lockCatId = updated.activeCategoryId;
+    const lockPhase = updated.activePhase ?? 'qualification';
     const lockRun = updated.activeRun;
 
     if (lockCatId) {
-      const lockKey = `${lockCatId}:${lockRun}`;
+      const lockKey = `${lockCatId}:${lockPhase}:${lockRun}`;
       const existing = event.lockedRuns ?? [];
 
       if (body.lock && !existing.includes(lockKey)) {
@@ -197,8 +225,9 @@ export async function PUT(request: NextRequest) {
 
   // Return isLocked for UI
   const finalLockedRuns = patch.lockedRuns ?? event.lockedRuns ?? [];
+  const finalLockPhase = updated.activePhase ?? 'qualification';
   const finalLockKey = updated.activeCategoryId
-    ? `${updated.activeCategoryId}:${updated.activeRun}`
+    ? `${updated.activeCategoryId}:${finalLockPhase}:${updated.activeRun}`
     : null;
   const isLocked = finalLockKey ? finalLockedRuns.includes(finalLockKey) : false;
 

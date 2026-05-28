@@ -281,3 +281,95 @@ describe('rankAthletes', () => {
     expect(result!.average).toBe(78); // (77+78+79)/3 = 78
   });
 });
+
+// ─── Configurable run counts ─────────────────────────────────────────────────
+
+describe('computeFinalScore with numRuns', () => {
+  const athlete: Athlete = { bib: 1, name: 'Alice' };
+
+  it('T-R01: numRuns=1 uses only run 1, ignores run 2 scores', () => {
+    const scores: Score[] = [
+      // Run 1: average = 70
+      makeScore({ judgeRole: 'J1', value: 60, run: 1 }),
+      makeScore({ judgeRole: 'J2', value: 70, run: 1 }),
+      makeScore({ judgeRole: 'J3', value: 80, run: 1 }),
+      // Run 2: average = 90 — should NOT be considered
+      makeScore({ judgeRole: 'J1', value: 85, run: 2 }),
+      makeScore({ judgeRole: 'J2', value: 90, run: 2 }),
+      makeScore({ judgeRole: 'J3', value: 95, run: 2 }),
+    ];
+    const result = computeFinalScore(scores, [cat1], athlete, 1);
+    expect(result.total).toBe(70);
+    expect(result.categoryScores[0].bestRun).toBe(1);
+    expect(result.categoryScores[0].run2).toBeNull();
+  });
+
+  it('T-R02: numRuns=3 considers all three run scores and picks best', () => {
+    const scores: Score[] = [
+      // Run 1: average = 60
+      makeScore({ judgeRole: 'J1', value: 60, run: 1 }),
+      makeScore({ judgeRole: 'J2', value: 60, run: 1 }),
+      makeScore({ judgeRole: 'J3', value: 60, run: 1 }),
+      // Run 2: average = 70
+      makeScore({ judgeRole: 'J1', value: 70, run: 2 }),
+      makeScore({ judgeRole: 'J2', value: 70, run: 2 }),
+      makeScore({ judgeRole: 'J3', value: 70, run: 2 }),
+      // Run 3: average = 85
+      makeScore({ judgeRole: 'J1', value: 85, run: 3 }),
+      makeScore({ judgeRole: 'J2', value: 85, run: 3 }),
+      makeScore({ judgeRole: 'J3', value: 85, run: 3 }),
+    ];
+    const result = computeFinalScore(scores, [cat1], athlete, 3);
+    expect(result.total).toBe(85);
+    expect(result.categoryScores[0].bestRun).toBe(3);
+  });
+
+  it('T-R03: numRuns=2 (default) picks best of two — backward compat', () => {
+    const scores: Score[] = [
+      makeScore({ judgeRole: 'J1', value: 60, run: 1 }),
+      makeScore({ judgeRole: 'J2', value: 70, run: 1 }),
+      makeScore({ judgeRole: 'J3', value: 80, run: 1 }),
+      makeScore({ judgeRole: 'J1', value: 85, run: 2 }),
+      makeScore({ judgeRole: 'J2', value: 90, run: 2 }),
+      makeScore({ judgeRole: 'J3', value: 95, run: 2 }),
+    ];
+    // Explicit numRuns=2 should behave like the original
+    const result = computeFinalScore(scores, [cat1], athlete, 2);
+    expect(result.total).toBe(90);
+    expect(result.categoryScores[0].bestRun).toBe(2);
+    expect(result.categoryScores[0].run1).not.toBeNull();
+    expect(result.categoryScores[0].run2).not.toBeNull();
+  });
+});
+
+describe('rankAthletes with numRuns', () => {
+  const athletes: Athlete[] = [
+    { bib: 1, name: 'Alice' },
+    { bib: 2, name: 'Bob' },
+  ];
+
+  it('T-R04: numRuns=1 ranks by run 1 only', () => {
+    const scores: Score[] = [
+      // Alice run 1: 80, run 2: 95
+      makeScore({ athleteBib: 1, judgeRole: 'J1', value: 80, run: 1 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J2', value: 80, run: 1 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J3', value: 80, run: 1 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J1', value: 95, run: 2 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J2', value: 95, run: 2 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J3', value: 95, run: 2 }),
+      // Bob run 1: 85, run 2: 50
+      makeScore({ athleteBib: 2, judgeRole: 'J1', value: 85, run: 1 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J2', value: 85, run: 1 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J3', value: 85, run: 1 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J1', value: 50, run: 2 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J2', value: 50, run: 2 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J3', value: 50, run: 2 }),
+    ];
+    // numRuns=1: only run 1 counts → Bob (85) beats Alice (80)
+    const ranked = rankAthletes(scores, [cat1], athletes, 1);
+    expect(ranked[0].athleteBib).toBe(2);
+    expect(ranked[0].rank).toBe(1);
+    expect(ranked[1].athleteBib).toBe(1);
+    expect(ranked[1].rank).toBe(2);
+  });
+});

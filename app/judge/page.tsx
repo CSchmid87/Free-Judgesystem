@@ -12,7 +12,7 @@ const tdStyle: React.CSSProperties = { ..._tdStyle, padding: '0.5rem 0.6rem' };
 interface LiveState {
   event: string | null;
   category: { id: string; name: string } | null;
-  run: 1 | 2;
+  run: number;
   athlete: { bib: number; name: string } | null;
   athleteIndex: number;
   athleteCount: number;
@@ -21,7 +21,7 @@ interface LiveState {
 interface LeaderboardResponse {
   categoryId: string | null;
   categoryName: string | null;
-  run: 1 | 2;
+  run: number;
   leaderboard: RankedAthlete[];
 }
 
