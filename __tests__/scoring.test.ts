@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computeRunScore,
   computeFinalScore,
+  getRunAthletes,
   rankAthletes,
 } from '../lib/scoring';
 import type { Score, Category, Athlete } from '../lib/types';
@@ -279,5 +280,40 @@ describe('rankAthletes', () => {
     ];
     const result = computeRunScore(scores, 'cat1', 1, 1);
     expect(result!.average).toBe(78); // (77+78+79)/3 = 78
+  });
+});
+
+// ─── getRunAthletes ──────────────────────────────────────────────────────────
+
+describe('getRunAthletes', () => {
+  const athletes: Athlete[] = [
+    { bib: 1, name: 'Alice' },
+    { bib: 2, name: 'Bob' },
+    { bib: 3, name: 'Charlie' },
+  ];
+  const category: Category = { id: 'cat1', name: 'Freestyle', athletes };
+
+  it('keeps run 1 in registered order', () => {
+    expect(getRunAthletes([], category, 1).map((a) => a.bib)).toEqual([1, 2, 3]);
+  });
+
+  it('reverses qualification ranking for run 2', () => {
+    const scores: Score[] = [
+      makeScore({ athleteBib: 1, judgeRole: 'J1', value: 90, run: 1 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J2', value: 90, run: 1 }),
+      makeScore({ athleteBib: 1, judgeRole: 'J3', value: 90, run: 1 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J1', value: 80, run: 1 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J2', value: 80, run: 1 }),
+      makeScore({ athleteBib: 2, judgeRole: 'J3', value: 80, run: 1 }),
+      makeScore({ athleteBib: 3, judgeRole: 'J1', value: 70, run: 1 }),
+      makeScore({ athleteBib: 3, judgeRole: 'J2', value: 70, run: 1 }),
+      makeScore({ athleteBib: 3, judgeRole: 'J3', value: 70, run: 1 }),
+    ];
+
+    expect(getRunAthletes(scores, category, 2).map((a) => a.bib)).toEqual([3, 2, 1]);
+  });
+
+  it('falls back to registered order when qualification is unavailable', () => {
+    expect(getRunAthletes([], category, 2).map((a) => a.bib)).toEqual([1, 2, 3]);
   });
 });

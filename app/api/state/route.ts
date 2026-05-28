@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadEvent } from '@/lib/store';
+import { getRunAthletes } from '@/lib/scoring';
 
 /**
  * GET /api/state
@@ -43,7 +44,7 @@ export async function GET() {
     ? event.categories.find((c) => c.id === live.activeCategoryId) ?? null
     : null;
 
-  const athletes = category?.athletes ?? [];
+  const athletes = category ? getRunAthletes(event.scores ?? [], category, live.activeRun) : [];
   const athleteCount = athletes.length;
 
   // Clamp index to valid range

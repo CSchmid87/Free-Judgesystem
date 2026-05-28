@@ -3,6 +3,7 @@ import { loadEvent, updateEvent } from '@/lib/store';
 import { validateAdminKey } from '@/lib/auth';
 import { JUDGE_ROLES } from '@/lib/types';
 import type { LiveState } from '@/lib/types';
+import { getRunAthletes } from '@/lib/scoring';
 
 /**
  * GET /api/admin/live
@@ -31,17 +32,20 @@ export async function GET(request: NextRequest) {
   const activeCategory = liveState.activeCategoryId
     ? event.categories.find((c) => c.id === liveState.activeCategoryId) ?? null
     : null;
+  const activeAthletes = activeCategory
+    ? getRunAthletes(event.scores ?? [], activeCategory, liveState.activeRun)
+    : [];
 
   // Collect judge scores for the active athlete/run
   const scores = event.scores ?? [];
   let judgeScores: Record<string, number | null> = { J1: null, J2: null, J3: null };
 
-  if (activeCategory && activeCategory.athletes.length > 0) {
+  if (activeCategory && activeAthletes.length > 0) {
     const idx = Math.min(
       Math.max(liveState.activeAthleteIndex, 0),
-      activeCategory.athletes.length - 1,
+      activeAthletes.length - 1,
     );
-    const athlete = activeCategory.athletes[idx];
+    const athlete = activeAthletes[idx];
 
     for (const role of JUDGE_ROLES) {
       const s = scores.find(
@@ -74,7 +78,7 @@ export async function GET(request: NextRequest) {
       ? {
           id: activeCategory.id,
           name: activeCategory.name,
-          athletes: activeCategory.athletes,
+          athletes: activeAthletes,
         }
       : null,
     judgeScores,
@@ -161,7 +165,7 @@ export async function PUT(request: NextRequest) {
   // Clamp activeAthleteIndex to valid range
   if (updated.activeCategoryId) {
     const cat = event.categories.find((c) => c.id === updated.activeCategoryId);
-    const count = cat?.athletes.length ?? 0;
+    const count = cat ? getRunAthletes(event.scores ?? [], cat, updated.activeRun).length : 0;
     if (count === 0) {
       updated.activeAthleteIndex = 0;
     } else if (updated.activeAthleteIndex >= count) {

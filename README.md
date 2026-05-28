@@ -18,6 +18,7 @@ A free, self-hosted judging system for freestyle sport events (e.g. ski, snowboa
 - **3 judges** (J1, J2, J3), scores **1–100** (integer)
 - **2 runs** per category, multiple attempts per run (re-run possible)
 - Best attempt per run → best-of-two-runs → final score
+- Run 2 start order reverses the Run 1 qualification ranking
 - Dense ranking with tie detection
 
 ---
