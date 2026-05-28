@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { loadEvent, saveEvent } from '@/lib/store';
 import { generateKey, validateAdminKey } from '@/lib/auth';
-import { DEFAULT_LIVE_STATE } from '@/lib/types';
+import { DEFAULT_LIVE_STATE, DEFAULT_FINAL_RUN_COUNT } from '@/lib/types';
 import type { EventData } from '@/lib/types';
 
 /**
@@ -74,6 +74,8 @@ export async function POST(request: NextRequest) {
       liveState: { ...DEFAULT_LIVE_STATE },
       scores: [],
       lockedRuns: [],
+      finalRunCount: DEFAULT_FINAL_RUN_COUNT,
+      finalsStarted: false,
     };
 
     saveEvent(event);

@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
       activeAthleteIndex: 0,
       activeAttemptNumber: 1,
     },
+    finalRunCount: raw.finalRunCount ?? 2,
+    finalsStarted: raw.finalsStarted ?? false,
   };
 
   /* ── Validate full structure ────────────────────────────────────────── */

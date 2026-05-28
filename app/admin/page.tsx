@@ -34,6 +34,15 @@ export default function AdminPage() {
   } | null>(null);
   const [importing, setImporting] = useState(false);
 
+  // Finals configuration state (US-C03)
+  const [finalsConfig, setFinalsConfig] = useState<{
+    finalRunCount: number;
+    finalsStarted: boolean;
+  } | null>(null);
+  const [finalRunCountDraft, setFinalRunCountDraft] = useState<number | ''>('');
+  const [finalsError, setFinalsError] = useState('');
+  const [finalsSaving, setFinalsSaving] = useState(false);
+
   function getKey() {
     return new URLSearchParams(window.location.search).get('key') ?? '';
   }
@@ -66,6 +75,78 @@ export default function AdminPage() {
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
+
+  // ── Finals configuration (US-C03) ─────────────────────────────────────
+  const loadFinalsConfig = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/finals?key=${encodeURIComponent(getKey())}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setFinalsConfig({
+        finalRunCount: data.finalRunCount,
+        finalsStarted: data.finalsStarted,
+      });
+      setFinalRunCountDraft(data.finalRunCount);
+    } catch {
+      /* ignore — surfaced via main error path */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFinalsConfig();
+  }, [loadFinalsConfig]);
+
+  async function handleSaveFinalRunCount(e: React.FormEvent) {
+    e.preventDefault();
+    setFinalsError('');
+    if (typeof finalRunCountDraft !== 'number') return;
+    setFinalsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/finals?key=${encodeURIComponent(getKey())}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ finalRunCount: finalRunCountDraft }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFinalsError(data.error || 'Failed to update final run count');
+        return;
+      }
+      setFinalsConfig({
+        finalRunCount: data.finalRunCount,
+        finalsStarted: data.finalsStarted,
+      });
+      setFinalRunCountDraft(data.finalRunCount);
+    } finally {
+      setFinalsSaving(false);
+    }
+  }
+
+  async function handleStartFinals() {
+    setFinalsError('');
+    if (!window.confirm('Start finals? After this, the final run count can no longer be changed.')) {
+      return;
+    }
+    setFinalsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/finals?key=${encodeURIComponent(getKey())}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFinalsError(data.error || 'Failed to start finals');
+        return;
+      }
+      setFinalsConfig({
+        finalRunCount: data.finalRunCount,
+        finalsStarted: data.finalsStarted,
+      });
+    } finally {
+      setFinalsSaving(false);
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -467,6 +548,85 @@ export default function AdminPage() {
           </button>
         </form>
       </section>
+
+      {/* US-C03: Finals configuration */}
+      {!authError && !noEvent && finalsConfig && (
+        <section style={styles.section} data-testid="finals-config">
+          <h2 style={styles.subheading}>Finals Configuration</h2>
+
+          {finalsConfig.finalsStarted ? (
+            <div
+              style={{
+                background: '#fff3cd',
+                border: '1px solid #ffe69c',
+                color: '#664d03',
+                padding: '0.75rem 1rem',
+                borderRadius: 6,
+                marginBottom: '0.75rem',
+              }}
+              data-testid="finals-status-started"
+            >
+              🏁 Finals have started. The number of final runs is locked at{' '}
+              <strong>{finalsConfig.finalRunCount}</strong>.
+            </div>
+          ) : (
+            <div
+              style={{
+                background: '#e7f1ff',
+                border: '1px solid #b6d4fe',
+                color: '#084298',
+                padding: '0.75rem 1rem',
+                borderRadius: 6,
+                marginBottom: '0.75rem',
+              }}
+              data-testid="finals-status-not-started"
+            >
+              ⏳ Finals have <strong>not started</strong> yet. You can still adjust
+              the number of final runs.
+            </div>
+          )}
+
+          <form onSubmit={handleSaveFinalRunCount} style={styles.addForm}>
+            <label htmlFor="finalRunCount" style={{ fontSize: '0.9rem' }}>
+              Final runs:
+            </label>
+            <input
+              id="finalRunCount"
+              type="number"
+              min={1}
+              max={9}
+              value={finalRunCountDraft}
+              onChange={(e) =>
+                setFinalRunCountDraft(e.target.value ? Number(e.target.value) : '')
+              }
+              disabled={finalsConfig.finalsStarted || finalsSaving}
+              style={{ ...styles.input, width: 80 }}
+            />
+            <button
+              type="submit"
+              style={styles.btnAdd}
+              disabled={
+                finalsConfig.finalsStarted ||
+                finalsSaving ||
+                typeof finalRunCountDraft !== 'number' ||
+                finalRunCountDraft === finalsConfig.finalRunCount
+              }
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              style={styles.btnSave}
+              onClick={handleStartFinals}
+              disabled={finalsConfig.finalsStarted || finalsSaving}
+            >
+              {finalsConfig.finalsStarted ? 'Finals started' : 'Start finals'}
+            </button>
+          </form>
+
+          {finalsError && <p style={styles.error}>{finalsError}</p>}
+        </section>
+      )}
     </div>
   );
 }

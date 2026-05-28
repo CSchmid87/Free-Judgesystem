@@ -4,7 +4,7 @@ import path from 'path';
 import { generateKey, validateAdminKey, validateJudgeKey } from '../lib/auth';
 import { loadEvent, saveEvent, updateEvent } from '../lib/store';
 import type { EventData } from '../lib/types';
-import { DEFAULT_LIVE_STATE } from '../lib/types';
+import { DEFAULT_LIVE_STATE, DEFAULT_FINAL_RUN_COUNT } from '../lib/types';
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
 
@@ -22,6 +22,8 @@ function makeEvent(overrides: Partial<EventData> = {}): EventData {
     liveState: { ...DEFAULT_LIVE_STATE },
     scores: [],
     lockedRuns: [],
+    finalRunCount: DEFAULT_FINAL_RUN_COUNT,
+    finalsStarted: false,
     ...overrides,
   };
 }

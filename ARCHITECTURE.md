@@ -42,7 +42,9 @@ EventData
 │   ├── activeRun: 1 | 2
 │   ├── activeAthleteIndex: number
 │   └── activeAttemptNumber: number
-└── lockedRuns: string[] (format: "categoryId:run")
+├── lockedRuns: string[] (format: "categoryId:run")
+├── finalRunCount: number (1–9, default 2 — adjustable until finals start)
+└── finalsStarted: boolean (default false — once true, finalRunCount is locked)
 ```
 
 ## Scoring Rules
@@ -99,6 +101,9 @@ app/
         athletes/route.ts    — POST/DELETE: athlete CRUD
         athletes/import/route.ts — POST: CSV bulk import
       live/route.ts          — GET/PUT: live state + lock/unlock + re-run
+      finals/route.ts        — GET/PUT: finals configuration (finalRunCount,
+                               finalsStarted). PUT rejects finalRunCount changes
+                               once finalsStarted=true (US-C03).
       results/route.ts       — GET: ranked leaderboard (optional ?judge=J1|J2|J3
                                for per-judge filtering). Uses withAdminAuth.
 
@@ -112,6 +117,9 @@ __tests__/
                                rankAthletes (ties, partial, multi-attempt, rounding)
   auth-store.test.ts         — 13 unit tests for generateKey / validateAdminKey /
                                validateJudgeKey / loadEvent / saveEvent / updateEvent
+  finals.test.ts             — 11 integration tests for /api/admin/finals (US-C03):
+                               adjust before start, lock after start, bounds, no
+                               qualification data mutation
 ```
 
 ## Key Patterns

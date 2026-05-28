@@ -112,6 +112,10 @@ export type RouteContext<T extends Record<string, string> = Record<string, strin
  * @property liveState  - Current live competition state
  * @property scores     - All submitted judge scores
  * @property lockedRuns - Lock keys ("categoryId:run") preventing further scoring
+ * @property finalRunCount - Number of runs for the finals phase (1–9). Adjustable
+ *                           by Head Judge / Technical Delegate until finals start.
+ * @property finalsStarted - True once the finals phase has been started. After
+ *                           this point `finalRunCount` is immutable.
  */
 export interface EventData {
   id: string;
@@ -123,7 +127,17 @@ export interface EventData {
   liveState: LiveState;
   scores: Score[];
   lockedRuns: string[];
+  finalRunCount: number;
+  finalsStarted: boolean;
 }
+
+/**
+ * Bounds for the configurable number of final runs.
+ * Inclusive on both ends. Default for new events is `DEFAULT_FINAL_RUN_COUNT`.
+ */
+export const MIN_FINAL_RUN_COUNT = 1;
+export const MAX_FINAL_RUN_COUNT = 9;
+export const DEFAULT_FINAL_RUN_COUNT = 2;
 
 /**
  * Type guard for EventData.
@@ -172,6 +186,19 @@ export function isEventData(value: unknown): value is EventData {
     if (typeof ls.activeAthleteIndex !== 'number') return false;
     // activeAttemptNumber: optional for backward compat (defaults to 1)
     if ('activeAttemptNumber' in ls && typeof ls.activeAttemptNumber !== 'number') return false;
+  }
+
+  // finalRunCount / finalsStarted: optional for backward compat
+  if ('finalRunCount' in obj) {
+    if (
+      typeof obj.finalRunCount !== 'number' ||
+      !Number.isInteger(obj.finalRunCount) ||
+      obj.finalRunCount < MIN_FINAL_RUN_COUNT ||
+      obj.finalRunCount > MAX_FINAL_RUN_COUNT
+    ) return false;
+  }
+  if ('finalsStarted' in obj) {
+    if (typeof obj.finalsStarted !== 'boolean') return false;
   }
 
   return true;
