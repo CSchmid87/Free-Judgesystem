@@ -322,10 +322,10 @@ export function getRunAthletes(
     return category.athletes;
   }
 
-  return ranked
-    .slice()
-    .reverse()
-    .map(({ athleteBib, athleteName }) => ({ bib: athleteBib, name: athleteName }));
+  return ranked.reverse().map((entry): Athlete => ({
+    bib: entry.athleteBib,
+    name: entry.athleteName,
+  }));
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
