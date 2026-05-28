@@ -30,8 +30,8 @@ export function isAthlete(value: unknown): value is Athlete {
  * @property numFinalists - Optional. When set to a positive integer the
  *   organizer has configured a finals phase: only this many athletes
  *   (selected from the Run 1 / qualification ranking) participate in Run 2.
- *   When `null` or `undefined`, no finals phase is configured and all athletes
- *   compete in both runs (legacy behavior).
+ *   `null`, `undefined`, or `0` mean no finals phase — all athletes compete
+ *   in both runs (legacy behavior).
  */
 export interface Category {
   id: string;

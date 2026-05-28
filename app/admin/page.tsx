@@ -308,7 +308,10 @@ export default function AdminPage() {
                           type="number"
                           min={0}
                           value={editFinalists}
-                          onChange={(e) => setEditFinalists(e.target.value ? Number(e.target.value) : '')}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEditFinalists(v === '' ? '' : Number(v));
+                          }}
                           placeholder="—"
                           style={{ ...styles.inputSmall, width: 70 }}
                         />
