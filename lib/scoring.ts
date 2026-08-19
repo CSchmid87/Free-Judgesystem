@@ -13,13 +13,22 @@ import type { Score, Category, Athlete } from './types';
  * @property attempt   - The attempt number these scores belong to.
  * @property scores    - Map of judgeRole → value (null if that judge hasn't
  *                       scored yet).
+ * @property previousAttempts - Superseded attempts of the same run (most
+ *                       recent first). Kept for audit only — they never
+ *                       contribute to the ranking.
  */
 export interface RunScoreResult {
   complete: boolean;
   average: number | null;
   attempt: number;
   scores: Record<string, number | null>;
+  previousAttempts: RunAttemptResult[];
 }
+
+/**
+ * A single scored attempt of a run, without the audit trail.
+ */
+export type RunAttemptResult = Omit<RunScoreResult, 'previousAttempts'>;
 
 /**
  * Final score for one athlete across all categories.
@@ -44,11 +53,11 @@ export interface FinalScoreResult {
  * @property bestRun       - Which run (1 or 2) produced the best average, or
  *                           null when no scores exist.
  * @property bestAverage   - The best run average, or null.
- * @property bestAttempt   - Which attempt of the best run was used.
+ * @property bestAttempt   - The counting (latest) attempt of the best run.
  * @property complete      - true when the best run has all 3 judge scores.
- * @property run1          - RunScoreResult for the best attempt of run 1 (or
+ * @property run1          - RunScoreResult for the latest attempt of run 1 (or
  *                           null if no scores).
- * @property run2          - RunScoreResult for the best attempt of run 2 (or
+ * @property run2          - RunScoreResult for the latest attempt of run 2 (or
  *                           null if no scores).
  */
 export interface CategoryScoreDetail {
@@ -78,9 +87,11 @@ export interface RankedAthlete extends FinalScoreResult {
 /**
  * Compute the run score for a single athlete / category / run.
  *
- * When multiple attempts exist for the same run, the attempt with the highest
- * complete average is selected. If no attempt is complete, the attempt with
- * the highest partial average is used instead.
+ * When multiple attempts exist for the same run (re-run), the **latest**
+ * attempt replaces all earlier ones: only the highest attempt number that has
+ * at least one judge score counts towards the ranking. Superseded attempts
+ * remain available in `previousAttempts` for audit purposes, so no attempt is
+ * lost and none is counted twice.
  *
  * **Incomplete handling**: When fewer than 3 judges have scored, `complete` is
  * `false` and `average` is computed from the scores that *are* present. If no
@@ -90,7 +101,7 @@ export interface RankedAthlete extends FinalScoreResult {
  * @param categoryId  The category to compute for.
  * @param athleteBib  The athlete bib number.
  * @param run         Which run (1 or 2).
- * @returns           RunScoreResult for the best attempt of this run.
+ * @returns           RunScoreResult for the latest attempt of this run.
  */
 export function computeRunScore(
   scores: Score[],
@@ -117,41 +128,37 @@ export function computeRunScore(
     byAttempt.set(att, arr);
   }
 
-  // Score each attempt
-  let best: RunScoreResult | null = null;
+  // Score each attempt, latest attempt first
+  const attempts: RunAttemptResult[] = [...byAttempt.keys()]
+    .sort((a, b) => b - a)
+    .map((attempt) => scoreAttempt(attempt, byAttempt.get(attempt) ?? []));
 
-  for (const [attempt, attemptScores] of byAttempt) {
-    const judgeMap: Record<string, number | null> = {};
-    for (const role of JUDGE_ROLES) {
-      const s = attemptScores.find((sc) => sc.judgeRole === role);
-      judgeMap[role] = s?.value ?? null;
-    }
+  const [latest, ...previousAttempts] = attempts;
 
-    const values = JUDGE_ROLES
-      .map((r) => judgeMap[r])
-      .filter((v): v is number => v !== null);
+  return { ...latest, previousAttempts };
+}
 
-    const complete = values.length === JUDGE_ROLES.length;
-    const average =
-      values.length > 0
-        ? round2(values.reduce((a, b) => a + b, 0) / values.length)
-        : null;
-
-    const result: RunScoreResult = { complete, average, attempt, scores: judgeMap };
-
-    // Pick the best attempt: prefer complete over incomplete, then highest average
-    if (!best) {
-      best = result;
-    } else if (result.complete && !best.complete) {
-      best = result;
-    } else if (result.complete === best.complete) {
-      if ((result.average ?? -1) > (best.average ?? -1)) {
-        best = result;
-      }
-    }
+/** Build the result for one attempt of a run. */
+function scoreAttempt(attempt: number, attemptScores: Score[]): RunAttemptResult {
+  const judgeMap: Record<string, number | null> = {};
+  for (const role of JUDGE_ROLES) {
+    // Guard against duplicates for the same judge: the last entry wins, so a
+    // single judge can never be counted twice within one attempt.
+    const matches = attemptScores.filter((sc) => sc.judgeRole === role);
+    judgeMap[role] = matches.length > 0 ? matches[matches.length - 1].value : null;
   }
 
-  return best;
+  const values = JUDGE_ROLES
+    .map((r) => judgeMap[r])
+    .filter((v): v is number => v !== null);
+
+  const complete = values.length === JUDGE_ROLES.length;
+  const average =
+    values.length > 0
+      ? round2(values.reduce((a, b) => a + b, 0) / values.length)
+      : null;
+
+  return { complete, average, attempt, scores: judgeMap };
 }
 
 /**

@@ -49,7 +49,9 @@ EventData
 
 - 3 judges (J1, J2, J3), scores 1–100 (integer)
 - 2 runs per category, multiple attempts per run possible (re-run)
-- Best attempt per run → best-of-two-runs → final score
+- Latest attempt per run counts (a re-run replaces the affected run); superseded
+  attempts stay stored and are exposed via `previousAttempts` for audit
+- Counting attempt per run → best-of-two-runs → final score
 - Standard competition ranking (1,1,3) with tie detection
 
 ## File Map
@@ -108,7 +110,7 @@ app/
                                POST: JSON import with validation
 
 __tests__/
-  scoring.test.ts            — 18 unit tests for computeRunScore / computeFinalScore /
+  scoring.test.ts            — 21 unit tests for computeRunScore / computeFinalScore /
                                rankAthletes (ties, partial, multi-attempt, rounding)
   auth-store.test.ts         — 13 unit tests for generateKey / validateAdminKey /
                                validateJudgeKey / loadEvent / saveEvent / updateEvent
@@ -138,7 +140,7 @@ __tests__/
 | `npm run test:watch` | Run tests in watch mode |
 
 Tests live in `__tests__/`. Vitest config is in `vitest.config.ts`.
-Coverage targets: `lib/scoring.ts` (18 tests), `lib/auth.ts` (6 tests), `lib/store.ts` (5 tests).
+Coverage targets: `lib/scoring.ts` (21 tests), `lib/auth.ts` (6 tests), `lib/store.ts` (5 tests).
 
 ## Architecture Notes — Health Baseline (US-REF-00)
 
