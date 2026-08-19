@@ -33,7 +33,7 @@
 
 | US | Title | Branch | Notes |
 |----|-------|--------|-------|
-| — | — | — | — |
+| US-D02 | Rerun scoring integrates correctly | `feature/US-D02` | Latest attempt per run counts; earlier attempts kept for audit |
 
 ### US-REF-00 Summary (merged via #74)
 

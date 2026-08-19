@@ -66,7 +66,7 @@ describe('computeRunScore', () => {
     expect(result).toBeNull();
   });
 
-  it('T-S05: multiple attempts → picks best (highest average)', () => {
+  it('T-S05: multiple attempts → latest attempt replaces the earlier one', () => {
     const scores: Score[] = [
       // Attempt 1: all judges, average = 50
       makeScore({ judgeRole: 'J1', value: 40, attempt: 1 }),
@@ -82,21 +82,65 @@ describe('computeRunScore', () => {
     expect(result!.attempt).toBe(2);
     expect(result!.average).toBe(80);
     expect(result!.complete).toBe(true);
+    // Original attempt stays available for audit but is not counted
+    expect(result!.previousAttempts).toHaveLength(1);
+    expect(result!.previousAttempts[0].attempt).toBe(1);
+    expect(result!.previousAttempts[0].average).toBe(50);
   });
 
-  it('T-S05b: prefers complete attempt over higher-scoring incomplete', () => {
+  it('T-S05b: re-run in progress → latest (incomplete) attempt counts', () => {
     const scores: Score[] = [
       // Attempt 1: complete, average = 60
       makeScore({ judgeRole: 'J1', value: 50, attempt: 1 }),
       makeScore({ judgeRole: 'J2', value: 60, attempt: 1 }),
       makeScore({ judgeRole: 'J3', value: 70, attempt: 1 }),
-      // Attempt 2: incomplete (J1 only), value = 95
+      // Attempt 2 (re-run): incomplete (J1 only), value = 95
       makeScore({ judgeRole: 'J1', value: 95, attempt: 2 }),
     ];
     const result = computeRunScore(scores, 'cat1', 1, 1);
-    expect(result!.attempt).toBe(1);
+    expect(result!.attempt).toBe(2);
+    expect(result!.complete).toBe(false);
+    expect(result!.average).toBe(95);
+    expect(result!.previousAttempts[0].attempt).toBe(1);
+  });
+
+  it('T-S05c: lower-scoring re-run replaces the original attempt', () => {
+    const scores: Score[] = [
+      makeScore({ judgeRole: 'J1', value: 90, attempt: 1 }),
+      makeScore({ judgeRole: 'J2', value: 90, attempt: 1 }),
+      makeScore({ judgeRole: 'J3', value: 90, attempt: 1 }),
+      makeScore({ judgeRole: 'J1', value: 30, attempt: 2 }),
+      makeScore({ judgeRole: 'J2', value: 30, attempt: 2 }),
+      makeScore({ judgeRole: 'J3', value: 30, attempt: 2 }),
+    ];
+    const result = computeRunScore(scores, 'cat1', 1, 1);
+    expect(result!.attempt).toBe(2);
+    expect(result!.average).toBe(30);
+    expect(result!.previousAttempts.map((a) => a.attempt)).toEqual([1]);
+  });
+
+  it('T-S05d: duplicate judge entries in one attempt are not counted twice', () => {
+    const scores: Score[] = [
+      makeScore({ judgeRole: 'J1', value: 50 }),
+      makeScore({ judgeRole: 'J1', value: 80 }),
+      makeScore({ judgeRole: 'J2', value: 80 }),
+      makeScore({ judgeRole: 'J3', value: 80 }),
+    ];
+    const result = computeRunScore(scores, 'cat1', 1, 1);
     expect(result!.complete).toBe(true);
-    expect(result!.average).toBe(60);
+    expect(result!.average).toBe(80); // last entry per judge wins
+    expect(result!.scores).toEqual({ J1: 80, J2: 80, J3: 80 });
+  });
+
+  it('T-S05e: audit trail lists all superseded attempts, newest first', () => {
+    const scores: Score[] = [
+      makeScore({ judgeRole: 'J1', value: 10, attempt: 1 }),
+      makeScore({ judgeRole: 'J1', value: 20, attempt: 2 }),
+      makeScore({ judgeRole: 'J1', value: 30, attempt: 3 }),
+    ];
+    const result = computeRunScore(scores, 'cat1', 1, 1);
+    expect(result!.attempt).toBe(3);
+    expect(result!.previousAttempts.map((a) => a.attempt)).toEqual([2, 1]);
   });
 
   it('ignores scores from different category or athlete', () => {
